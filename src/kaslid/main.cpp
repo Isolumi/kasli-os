@@ -11,6 +11,7 @@
 #include <kasli/tools/system_info_tool.hpp>
 #include <kasli/tools/tool_registry.hpp>
 
+#include <cstddef>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
@@ -19,6 +20,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 
 namespace {
 
@@ -85,16 +87,25 @@ std::string request_id_or_unknown(const nlohmann::json& request) {
   return "unknown";
 }
 
+std::string bound_audit_string(const std::string& value) {
+  constexpr std::size_t max_bytes = 2048;
+  constexpr std::string_view marker = "...[truncated]";
+  if (value.size() <= max_bytes) {
+    return value;
+  }
+  return value.substr(0, max_bytes - marker.size()) + std::string(marker);
+}
+
 void audit_protocol_error(const kasli::audit::AuditLog& audit,
                           const std::string& request_id,
                           const std::string& message) {
   audit.append(kasli::core::AuditEvent{
       .id = kasli::core::make_event_id(),
-      .timestamp = "",
+      .timestamp = kasli::core::utc_timestamp(),
       .actor = "cli",
       .type = "protocol.error",
-      .summary = message,
-      .details = {{"request_id", request_id}},
+      .summary = bound_audit_string(message),
+      .details = {{"request_id", bound_audit_string(request_id)}},
   });
 }
 
@@ -157,6 +168,7 @@ int main(int argc, char** argv) {
     registry.add(std::make_unique<kasli::tools::SystemInfoTool>());
 #if KASLI_HAS_SYSTEMD
     registry.add(std::make_unique<kasli::tools::SystemdUnitsTool>());
+    registry.add(std::make_unique<kasli::tools::SystemdUnitStatusTool>());
     registry.add(std::make_unique<kasli::tools::LiveJournalTool>());
 #else
     registry.add(std::make_unique<kasli::tools::JournalFixtureTool>(journal_fixture_path()));

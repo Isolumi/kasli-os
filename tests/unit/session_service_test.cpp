@@ -48,14 +48,29 @@ void require_audit_event(const nlohmann::json& event,
                          const std::string& actor,
                          const std::string& summary,
                          const std::string& request_id,
+                         const std::string& request_risk,
                          const std::string& policy_decision,
                          const std::string& status) {
   REQUIRE(event.at("actor") == actor);
   REQUIRE(event.at("type") == "tool.call");
   REQUIRE(event.at("summary") == summary);
+  REQUIRE_FALSE(event.at("timestamp").get<std::string>().empty());
   REQUIRE(event.at("details").at("request_id") == request_id);
+  REQUIRE(event.at("details").at("tool_name") == summary);
+  REQUIRE(event.at("details").at("request_risk") == request_risk);
+  REQUIRE(nlohmann::json::parse(event.at("details").at("request_params").get<std::string>())
+              .is_object());
   REQUIRE(event.at("details").at("policy_decision") == policy_decision);
+  REQUIRE(event.at("details").at("response_status") == status);
   REQUIRE(event.at("details").at("status") == status);
+  REQUIRE(event.at("details").contains("response_message"));
+  REQUIRE(event.at("details").contains("response_evidence_count"));
+  const auto refs =
+      nlohmann::json::parse(event.at("details").at("response_evidence_refs").get<std::string>());
+  REQUIRE(refs.is_array());
+  for (const auto& ref : refs) {
+    REQUIRE_FALSE(ref.contains("body"));
+  }
 }
 
 }  // namespace
@@ -82,7 +97,8 @@ TEST_CASE("session service executes allowed tool and audits it") {
   REQUIRE(response.evidence.size() == 1);
 
   const auto event = read_single_audit_event(dir / "audit.jsonl");
-  require_audit_event(event, "tester", "system.info", "req-1", "read-only tool allowed", "ok");
+  require_audit_event(
+      event, "tester", "system.info", "req-1", "read_only", "read-only tool allowed", "ok");
 }
 
 TEST_CASE("session service denies unknown tool and audits denial") {
@@ -108,6 +124,7 @@ TEST_CASE("session service denies unknown tool and audits denial") {
                       "tester",
                       "shell.exec",
                       "req-2",
+                      "admin",
                       "tool is not registered in policy allowlist",
                       "denied");
 }
@@ -132,7 +149,8 @@ TEST_CASE("session service denies allowed policy tool missing from registry and 
   REQUIRE(response.message == "tool is not registered");
 
   const auto event = read_single_audit_event(dir / "audit.jsonl");
-  require_audit_event(event, "tester", "ghost.tool", "req-3", "read-only tool allowed", "denied");
+  require_audit_event(
+      event, "tester", "ghost.tool", "req-3", "read_only", "read-only tool allowed", "denied");
 }
 
 TEST_CASE("session service returns error and audits when tool throws") {
@@ -157,5 +175,6 @@ TEST_CASE("session service returns error and audits when tool throws") {
   REQUIRE(response.message == "tool exploded");
 
   const auto event = read_single_audit_event(dir / "audit.jsonl");
-  require_audit_event(event, "tester", "throwing.tool", "req-4", "read-only tool allowed", "error");
+  require_audit_event(
+      event, "tester", "throwing.tool", "req-4", "read_only", "read-only tool allowed", "error");
 }

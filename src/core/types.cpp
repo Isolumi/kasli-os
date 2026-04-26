@@ -1,5 +1,9 @@
 #include <kasli/core/types.hpp>
 
+#include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
 #include <stdexcept>
 
 namespace kasli::core {
@@ -43,6 +47,22 @@ ToolStatus tool_status_from_string(const std::string& value) {
   if (value == "denied") return ToolStatus::Denied;
   if (value == "error") return ToolStatus::Error;
   throw std::invalid_argument("unknown tool status: " + value);
+}
+
+std::string utc_timestamp() {
+  const auto now = std::chrono::system_clock::now();
+  const std::time_t seconds = std::chrono::system_clock::to_time_t(now);
+
+  std::tm utc{};
+#if defined(_WIN32)
+  gmtime_s(&utc, &seconds);
+#else
+  gmtime_r(&seconds, &utc);
+#endif
+
+  std::ostringstream output;
+  output << std::put_time(&utc, "%Y-%m-%dT%H:%M:%SZ");
+  return output.str();
 }
 
 void to_json(nlohmann::json& json, const Evidence& evidence) {

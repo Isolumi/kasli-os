@@ -127,13 +127,30 @@ TEST_CASE("ask with tool sends tool evidence to model and audits model request")
   REQUIRE(provider.calls == 1);
 
   const auto events = read_audit_events(dir / "audit.jsonl");
-  REQUIRE(events.size() == 2);
+  REQUIRE(events.size() == 3);
   REQUIRE(events[0].at("type") == "tool.call");
   REQUIRE(events[1].at("type") == "model.request");
+  REQUIRE(events[2].at("type") == "model.response");
+  REQUIRE_FALSE(events[0].at("timestamp").get<std::string>().empty());
+  REQUIRE_FALSE(events[1].at("timestamp").get<std::string>().empty());
+  REQUIRE_FALSE(events[2].at("timestamp").get<std::string>().empty());
   REQUIRE(events[1].at("actor") == "tester");
   REQUIRE(events[1].at("summary") == "Why did ssh fail?");
   REQUIRE(events[1].at("details").at("request_id") == "req-ask-1");
+  REQUIRE(events[1].at("details").at("prompt") == "Why did ssh fail?");
   REQUIRE(events[1].at("details").at("evidence_count") == "1");
+  const auto request_refs =
+      nlohmann::json::parse(events[1].at("details").at("evidence_refs").get<std::string>());
+  REQUIRE(request_refs.at(0).at("id") == "ev-1");
+  REQUIRE(request_refs.at(0).at("source") == "journal.query");
+  REQUIRE_FALSE(request_refs.at(0).contains("body"));
+  REQUIRE(events[2].at("details").at("request_id") == "req-ask-1");
+  REQUIRE(events[2].at("details").at("response_status") == "ok");
+  REQUIRE(events[2].at("details").at("response_message") == "model response received");
+  REQUIRE(events[2].at("details").at("response_bytes") ==
+          std::to_string(std::string("Fake answer based on 1 evidence record(s).").size()));
+  REQUIRE(events[2].at("details").at("response_preview") ==
+          "Fake answer based on 1 evidence record(s).");
 }
 
 TEST_CASE("ask with denied tool skips model request") {
@@ -164,9 +181,12 @@ TEST_CASE("ask with denied tool skips model request") {
   REQUIRE(events.size() == 2);
   REQUIRE(events[0].at("type") == "tool.call");
   REQUIRE(events[1].at("type") == "model.skipped");
+  REQUIRE_FALSE(events[1].at("timestamp").get<std::string>().empty());
   REQUIRE(events[1].at("details").at("request_id") == "req-denied-1");
+  REQUIRE(events[1].at("details").at("prompt") == "Why did ssh fail?");
   REQUIRE(events[1].at("details").at("tool_status") == "denied");
   REQUIRE(events[1].at("details").at("reason") == "tool is not registered in policy allowlist");
+  REQUIRE(events[1].at("details").at("evidence_count") == "0");
 }
 
 TEST_CASE("ask with tool error skips model request") {
@@ -199,9 +219,12 @@ TEST_CASE("ask with tool error skips model request") {
   REQUIRE(events.size() == 2);
   REQUIRE(events[0].at("type") == "tool.call");
   REQUIRE(events[1].at("type") == "model.skipped");
+  REQUIRE_FALSE(events[1].at("timestamp").get<std::string>().empty());
   REQUIRE(events[1].at("details").at("request_id") == "req-error-1");
+  REQUIRE(events[1].at("details").at("prompt") == "Why did ssh fail?");
   REQUIRE(events[1].at("details").at("tool_status") == "error");
   REQUIRE(events[1].at("details").at("reason") == "tool exploded");
+  REQUIRE(events[1].at("details").at("evidence_count") == "0");
 }
 
 TEST_CASE("ask with model error returns failed result and audits model error") {
@@ -235,6 +258,9 @@ TEST_CASE("ask with model error returns failed result and audits model error") {
   REQUIRE(events[0].at("type") == "tool.call");
   REQUIRE(events[1].at("type") == "model.request");
   REQUIRE(events[2].at("type") == "model.error");
+  REQUIRE_FALSE(events[2].at("timestamp").get<std::string>().empty());
   REQUIRE(events[2].at("details").at("request_id") == "req-model-error-1");
+  REQUIRE(events[2].at("details").at("prompt") == "Why did ssh fail?");
   REQUIRE(events[2].at("details").at("error") == "model exploded");
+  REQUIRE(events[2].at("details").at("evidence_count") == "1");
 }

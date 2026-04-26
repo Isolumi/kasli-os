@@ -2,6 +2,7 @@
 #include <kasli/core/types.hpp>
 
 #include <nlohmann/json.hpp>
+#include <regex>
 
 using kasli::core::Evidence;
 using kasli::core::RiskClass;
@@ -12,6 +13,11 @@ TEST_CASE("risk class converts to and from strings") {
   REQUIRE(kasli::core::to_string(RiskClass::ReadOnly) == "read_only");
   REQUIRE(kasli::core::risk_class_from_string("read_only") == RiskClass::ReadOnly);
   REQUIRE(kasli::core::risk_class_from_string("admin") == RiskClass::Admin);
+}
+
+TEST_CASE("UTC timestamp uses ISO-8601-ish Zulu format") {
+  const auto timestamp = kasli::core::utc_timestamp();
+  REQUIRE(std::regex_match(timestamp, std::regex(R"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)")));
 }
 
 TEST_CASE("tool request serializes with typed risk") {

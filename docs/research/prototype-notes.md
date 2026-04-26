@@ -8,10 +8,13 @@ Implemented trust boundaries:
 - Tool calls are typed.
 - Tool risk is checked by the policy broker using trusted tool metadata.
 - Only read-only tools are allowed.
-- Audit events are written as JSONL.
+- Audit events are written as JSONL with UTC-ish timestamps.
 - Model requests receive curated evidence only.
-- `ask` skips model invocation on denied/error tool calls and audits `model.skipped`/`model.error`.
-- Live systemd path is gated behind `KASLI_HAS_SYSTEMD` and was statically inspected on macOS; macOS build uses fixture journal.
+- The Unix socket daemon uses newline-delimited JSON frames. The socket path is changed to owner-only mode (`0600`) immediately after bind, peers are checked for the same effective UID on macOS (`LOCAL_PEERCRED`) and Linux (`SO_PEERCRED`) where available, and request/response lines are capped at 1 MiB. Oversized or missing-newline frames are rejected.
+- Tool audit records include bounded request params, policy decision, response status/message, and evidence IDs/sources/summaries/timestamps. Evidence bodies are not copied into audit details.
+- Model audit records include bounded prompt text, evidence IDs/sources/count, `model.response` metadata for successful calls, and timestamped `model.skipped`/`model.error` records for failed paths.
+- `journal.query` requires an explicit non-empty `unit` selector in fixture and live paths. Missing or empty units return an error instead of broad logs.
+- `systemd.unit.status` is implemented for `KASLI_HAS_SYSTEMD` builds as a read-only DBus status/property query. Live systemd and journal paths are gated behind `KASLI_HAS_SYSTEMD`; macOS builds use fixture journal and can only exercise the systemd unavailable behavior.
 
 Manual checks:
 
@@ -48,21 +51,16 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build
 ctest --test-dir build --output-on-failure
 ./build/kaslid --socket build/kaslid.sock --audit-log build/dev-audit.jsonl --once &
+sleep 1
 ./build/kasli --socket build/kaslid.sock --tools-list
 ./build/kaslid --socket build/kaslid.sock --audit-log build/dev-audit.jsonl --once &
+sleep 1
 ./build/kasli --socket build/kaslid.sock --call-tool system.info
 git status --short
 ```
 
-Observed outcome: CMake configured, the build succeeded, and `ctest` passed 53/53 tests.
-
-`git status --short` after the verification commands and before commit:
-
-```text
- M docs/research/prototype-notes.md
- M docs/superpowers/plans/2026-04-26-read-only-core-prototype.md
-```
+Observed outcome after the hardening pass: CMake configured, the build succeeded, and `ctest` passed 64/64 tests.
 
 CLI smoke checks used the implemented Unix socket `--once` path. `--tools-list` returned `ok: true` with `system.info` and `journal.query`; `--call-tool system.info` returned `ok: true` with Darwin 25.3.0 arm64 evidence.
 
-Ollama live `ask` was skipped because this macOS verification did not confirm a local Ollama daemon with `llama3.2` available. Live Linux systemd checks were skipped because the verification ran on macOS without libsystemd; the unavailable systemd test coverage passed.
+`journal.query` tests and any direct journal smoke checks must pass `unit=ssh.service` or another explicit unit selector. Ollama live `ask` was skipped because this macOS verification did not confirm a local Ollama daemon with `llama3.2` available. Live Linux systemd checks were skipped because the verification ran on macOS without libsystemd; the unavailable systemd test coverage passed for `systemd.units.list` and `systemd.unit.status`.

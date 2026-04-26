@@ -56,6 +56,7 @@ std::string to_string(RiskClass risk);
 RiskClass risk_class_from_string(const std::string& value);
 std::string to_string(ToolStatus status);
 ToolStatus tool_status_from_string(const std::string& value);
+std::string utc_timestamp();
 
 void to_json(nlohmann::json& json, const Evidence& evidence);
 void from_json(const nlohmann::json& json, Evidence& evidence);

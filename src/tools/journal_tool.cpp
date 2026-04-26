@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <fstream>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -61,6 +62,27 @@ core::ToolResponse journal_unavailable_response(const core::ToolRequest& request
   };
 }
 
+bool is_blank(const std::string& value) {
+  return value.find_first_not_of(" \t\r\n") == std::string::npos;
+}
+
+std::string required_unit_param(const core::ToolRequest& request) {
+  const auto unit = request.params.contains("unit") ? request.params.at("unit") : "";
+  if (is_blank(unit)) {
+    throw std::invalid_argument("journal.query requires a non-empty unit parameter");
+  }
+  return unit;
+}
+
+core::ToolResponse missing_unit_response(const core::ToolRequest& request) {
+  return core::ToolResponse{
+      .request_id = request.id,
+      .status = core::ToolStatus::Error,
+      .message = "journal.query requires a non-empty unit parameter",
+      .evidence = {},
+  };
+}
+
 #if KASLI_HAS_SYSTEMD
 struct JournalHandle {
   sd_journal* journal = nullptr;
@@ -86,7 +108,13 @@ core::RiskClass JournalFixtureTool::risk() const {
 }
 
 core::ToolResponse JournalFixtureTool::call(const core::ToolRequest& request) const {
-  const auto unit = request.params.contains("unit") ? request.params.at("unit") : "";
+  std::string unit;
+  try {
+    unit = required_unit_param(request);
+  } catch (const std::invalid_argument&) {
+    return missing_unit_response(request);
+  }
+
   std::ifstream input(fixture_path_);
   if (!input) {
     return core::ToolResponse{
@@ -142,7 +170,7 @@ core::ToolResponse JournalFixtureTool::call(const core::ToolRequest& request) co
           .source = "journal.query",
           .summary = "bounded journal entries for " + unit,
           .body = body,
-          .timestamp = "",
+          .timestamp = core::utc_timestamp(),
       }},
   };
 }
@@ -156,9 +184,14 @@ core::RiskClass LiveJournalTool::risk() const {
 }
 
 core::ToolResponse LiveJournalTool::call(const core::ToolRequest& request) const {
-#if KASLI_HAS_SYSTEMD
-  const auto unit = request.params.contains("unit") ? request.params.at("unit") : "";
+  std::string unit;
+  try {
+    unit = required_unit_param(request);
+  } catch (const std::invalid_argument&) {
+    return missing_unit_response(request);
+  }
 
+#if KASLI_HAS_SYSTEMD
   JournalHandle handle;
   int result = sd_journal_open(&handle.journal, SD_JOURNAL_LOCAL_ONLY);
   if (result < 0) {
@@ -250,7 +283,7 @@ core::ToolResponse LiveJournalTool::call(const core::ToolRequest& request) const
           .source = "journal.query",
           .summary = "bounded recent journal entries for " + unit,
           .body = body,
-          .timestamp = "",
+          .timestamp = core::utc_timestamp(),
       }},
   };
 #else

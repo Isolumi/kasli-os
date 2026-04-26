@@ -40,10 +40,38 @@ TEST_CASE("journal fixture tool reports missing fixture") {
       .id = "req-missing",
       .tool_name = "journal.query",
       .risk = kasli::core::RiskClass::ReadOnly,
+      .params = {{"unit", "ssh.service"}},
   });
 
   REQUIRE(response.status == kasli::core::ToolStatus::Error);
   REQUIRE(response.message.find("failed to open journal fixture: ") == 0);
+  REQUIRE(response.evidence.empty());
+}
+
+TEST_CASE("journal fixture tool requires explicit unit selector") {
+  kasli::tools::JournalFixtureTool tool("tests/fixtures/journal/ssh_failed.jsonl");
+  auto response = tool.call(kasli::core::ToolRequest{
+      .id = "req-missing-unit",
+      .tool_name = "journal.query",
+      .risk = kasli::core::RiskClass::ReadOnly,
+  });
+
+  REQUIRE(response.status == kasli::core::ToolStatus::Error);
+  REQUIRE(response.message == "journal.query requires a non-empty unit parameter");
+  REQUIRE(response.evidence.empty());
+}
+
+TEST_CASE("journal fixture tool rejects empty unit selector") {
+  kasli::tools::JournalFixtureTool tool("tests/fixtures/journal/ssh_failed.jsonl");
+  auto response = tool.call(kasli::core::ToolRequest{
+      .id = "req-empty-unit",
+      .tool_name = "journal.query",
+      .risk = kasli::core::RiskClass::ReadOnly,
+      .params = {{"unit", "  "}},
+  });
+
+  REQUIRE(response.status == kasli::core::ToolStatus::Error);
+  REQUIRE(response.message == "journal.query requires a non-empty unit parameter");
   REQUIRE(response.evidence.empty());
 }
 
@@ -164,4 +192,17 @@ TEST_CASE("live journal tool reports unavailable when systemd is not built") {
   REQUIRE(response.message == "journal support was not built");
   REQUIRE(response.evidence.empty());
 #endif
+}
+
+TEST_CASE("live journal tool requires explicit unit selector") {
+  kasli::tools::LiveJournalTool tool;
+  auto response = tool.call(kasli::core::ToolRequest{
+      .id = "req-live-journal-missing-unit",
+      .tool_name = "journal.query",
+      .risk = kasli::core::RiskClass::ReadOnly,
+  });
+
+  REQUIRE(response.status == kasli::core::ToolStatus::Error);
+  REQUIRE(response.message == "journal.query requires a non-empty unit parameter");
+  REQUIRE(response.evidence.empty());
 }

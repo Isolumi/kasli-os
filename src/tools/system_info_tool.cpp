@@ -45,7 +45,7 @@ core::ToolResponse SystemInfoTool::call(const core::ToolRequest& request) const 
           .source = "system.info",
           .summary = "OS identity and kernel summary",
           .body = body.str(),
-          .timestamp = "",
+          .timestamp = core::utc_timestamp(),
       }},
   };
 }

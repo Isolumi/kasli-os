@@ -1,10 +1,13 @@
 #pragma once
 
+#include <cstddef>
 #include <filesystem>
 #include <functional>
 #include <string>
 
 namespace kasli::ipc {
+
+inline constexpr std::size_t kMaxUnixSocketLineBytes = 1024 * 1024;
 
 class UnixSocketServer {
  public:

@@ -1,14 +1,24 @@
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE
+#endif
+
 #include <kasli/ipc/unix_socket.hpp>
 
 #include <cerrno>
+#include <cstddef>
 #include <cstring>
 #include <stdexcept>
 #include <string>
 #include <utility>
 
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/types.h>
 #include <sys/un.h>
+#if defined(__APPLE__)
+#include <sys/ucred.h>
+#endif
 #include <unistd.h>
 
 namespace kasli::ipc {
@@ -95,7 +105,17 @@ void write_all(int fd, const std::string& data) {
   }
 }
 
-std::string read_all(int fd) {
+void write_line(int fd, const std::string& data) {
+  if (data.size() > kMaxUnixSocketLineBytes) {
+    throw std::runtime_error("unix socket line is too large");
+  }
+  if (data.find('\n') != std::string::npos) {
+    throw std::runtime_error("unix socket line payload must not contain a newline");
+  }
+  write_all(fd, data + '\n');
+}
+
+std::string read_line(int fd, const std::string& role) {
   std::string data;
   char buffer[4096];
   while (true) {
@@ -104,12 +124,23 @@ std::string read_all(int fd) {
       if (errno == EINTR) {
         continue;
       }
+      if (errno == ECONNRESET) {
+        throw std::runtime_error("unix socket " + role + " is missing newline framing");
+      }
       throw syscall_error("read");
     }
     if (bytes_read == 0) {
-      return data;
+      throw std::runtime_error("unix socket " + role + " is missing newline framing");
     }
-    data.append(buffer, static_cast<std::size_t>(bytes_read));
+    for (ssize_t index = 0; index < bytes_read; ++index) {
+      if (buffer[index] == '\n') {
+        return data;
+      }
+      if (data.size() >= kMaxUnixSocketLineBytes) {
+        throw std::runtime_error("unix socket " + role + " line is too large");
+      }
+      data.push_back(buffer[index]);
+    }
   }
 }
 
@@ -130,6 +161,41 @@ class FileDescriptor {
 void prepare_connected_socket(int fd) {
   set_socket_timeouts(fd);
   suppress_sigpipe(fd);
+}
+
+void restrict_socket_path(const std::filesystem::path& socket_path) {
+  if (::chmod(socket_path.c_str(), S_IRUSR | S_IWUSR) != 0) {
+    throw syscall_error("chmod");
+  }
+}
+
+void validate_same_uid_peer(int fd) {
+#if defined(__APPLE__) && defined(LOCAL_PEERCRED)
+  xucred credentials{};
+  socklen_t credentials_length = sizeof(credentials);
+  if (::getsockopt(fd,
+                   SOL_LOCAL,
+                   LOCAL_PEERCRED,
+                   &credentials,
+                   &credentials_length) != 0) {
+    throw syscall_error("getsockopt LOCAL_PEERCRED");
+  }
+  if (credentials_length < sizeof(credentials) || credentials.cr_version != XUCRED_VERSION ||
+      credentials.cr_uid != geteuid()) {
+    throw std::runtime_error("unix socket peer uid is not allowed");
+  }
+#elif defined(__linux__) && defined(SO_PEERCRED)
+  ucred credentials{};
+  socklen_t credentials_length = sizeof(credentials);
+  if (::getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &credentials, &credentials_length) != 0) {
+    throw syscall_error("getsockopt SO_PEERCRED");
+  }
+  if (credentials_length < sizeof(credentials) || credentials.uid != geteuid()) {
+    throw std::runtime_error("unix socket peer uid is not allowed");
+  }
+#else
+  (void)fd;
+#endif
 }
 
 void reject_active_socket_or_remove_stale(const std::filesystem::path& socket_path) {
@@ -179,6 +245,7 @@ UnixSocketServer::UnixSocketServer(std::filesystem::path socket_path)
       throw syscall_error("bind");
     }
     owns_socket_path_ = true;
+    restrict_socket_path(socket_path_);
     if (::listen(fd_, 16) != 0) {
       throw syscall_error("listen");
     }
@@ -213,9 +280,10 @@ void UnixSocketServer::accept_one(
 
   FileDescriptor client(client_fd);
   prepare_connected_socket(client.get());
-  const std::string request = read_all(client.get());
+  validate_same_uid_peer(client.get());
+  const std::string request = read_line(client.get(), "request");
   const std::string response = handler(request);
-  write_all(client.get(), response);
+  write_line(client.get(), response);
 }
 
 std::string request_over_unix_socket(const std::filesystem::path& socket_path,
@@ -231,11 +299,8 @@ std::string request_over_unix_socket(const std::filesystem::path& socket_path,
     throw syscall_error("connect");
   }
 
-  write_all(fd.get(), request);
-  if (::shutdown(fd.get(), SHUT_WR) != 0) {
-    throw syscall_error("shutdown");
-  }
-  return read_all(fd.get());
+  write_line(fd.get(), request);
+  return read_line(fd.get(), "response");
 }
 
 }  // namespace kasli::ipc
