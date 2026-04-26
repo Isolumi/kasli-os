@@ -22,6 +22,22 @@ TEST_CASE("line protocol encodes tool call request") {
   REQUIRE(request.at("tool").at("tool_name") == "system.info");
 }
 
+TEST_CASE("line protocol encodes ask request") {
+  kasli::core::ToolRequest tool_request{
+      .id = "tool-ask-1",
+      .tool_name = "system.info",
+      .risk = kasli::core::RiskClass::ReadOnly,
+      .params = {},
+  };
+
+  auto request = kasli::ipc::make_ask_request("req-ask-1", "What OS is this?", tool_request);
+  REQUIRE(request.at("id") == "req-ask-1");
+  REQUIRE(request.at("method") == "ask");
+  REQUIRE(request.at("prompt") == "What OS is this?");
+  REQUIRE(request.at("tool").at("id") == "tool-ask-1");
+  REQUIRE(request.at("tool").at("tool_name") == "system.info");
+}
+
 TEST_CASE("line protocol maps successful tool response to ok envelope") {
   kasli::core::ToolResponse tool_response{
       .request_id = "tool-1",
@@ -62,6 +78,22 @@ TEST_CASE("line protocol maps error tool response to failed envelope") {
   REQUIRE(response.at("id") == "req-5");
   REQUIRE(response.at("ok") == false);
   REQUIRE(response.at("response").at("status") == "error");
+}
+
+TEST_CASE("line protocol maps successful ask response to answer envelope") {
+  auto response = kasli::ipc::make_ask_response("req-ask-2", true, "answer text", "");
+  REQUIRE(response.at("id") == "req-ask-2");
+  REQUIRE(response.at("ok") == true);
+  REQUIRE(response.at("answer") == "answer text");
+  REQUIRE_FALSE(response.contains("error"));
+}
+
+TEST_CASE("line protocol maps failed ask response to error envelope") {
+  auto response = kasli::ipc::make_ask_response("req-ask-3", false, "", "model unavailable");
+  REQUIRE(response.at("id") == "req-ask-3");
+  REQUIRE(response.at("ok") == false);
+  REQUIRE(response.at("error") == "model unavailable");
+  REQUIRE_FALSE(response.contains("answer"));
 }
 
 TEST_CASE("line protocol preserves error response id") {

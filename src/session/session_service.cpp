@@ -67,10 +67,10 @@ core::ToolResponse SessionService::call_tool(const core::ToolRequest& request,
   return response;
 }
 
-std::string SessionService::ask_with_tool(const std::string& prompt,
-                                          const core::ToolRequest& request,
-                                          const model::ModelProvider& model,
-                                          const std::string& actor) const {
+AskResult SessionService::ask_with_tool(const std::string& prompt,
+                                        const core::ToolRequest& request,
+                                        const model::ModelProvider& model,
+                                        const std::string& actor) const {
   auto tool_response = call_tool(request, actor);
   if (tool_response.status != core::ToolStatus::Ok) {
     audit_.append(core::AuditEvent{
@@ -83,7 +83,11 @@ std::string SessionService::ask_with_tool(const std::string& prompt,
                     {"tool_status", core::to_string(tool_response.status)},
                     {"reason", tool_response.message}},
     });
-    return "Unable to answer because tool call did not succeed: " + tool_response.message;
+    return AskResult{
+        .ok = false,
+        .answer = "",
+        .error = "tool call did not succeed: " + tool_response.message,
+    };
   }
 
   audit_.append(core::AuditEvent{
@@ -95,7 +99,36 @@ std::string SessionService::ask_with_tool(const std::string& prompt,
       .details = {{"request_id", request.id},
                   {"evidence_count", std::to_string(tool_response.evidence.size())}},
   });
-  return model.complete(model::ModelRequest{.prompt = prompt, .evidence = tool_response.evidence});
+
+  try {
+    return AskResult{
+        .ok = true,
+        .answer =
+            model.complete(model::ModelRequest{.prompt = prompt, .evidence = tool_response.evidence}),
+        .error = "",
+    };
+  } catch (const std::exception& error) {
+    audit_.append(core::AuditEvent{
+        .id = core::make_event_id(),
+        .timestamp = "",
+        .actor = actor,
+        .type = "model.error",
+        .summary = prompt,
+        .details = {{"request_id", request.id}, {"error", error.what()}},
+    });
+    return AskResult{.ok = false, .answer = "", .error = error.what()};
+  } catch (...) {
+    const std::string message = "model failed with unknown exception";
+    audit_.append(core::AuditEvent{
+        .id = core::make_event_id(),
+        .timestamp = "",
+        .actor = actor,
+        .type = "model.error",
+        .summary = prompt,
+        .details = {{"request_id", request.id}, {"error", message}},
+    });
+    return AskResult{.ok = false, .answer = "", .error = message};
+  }
 }
 
 }  // namespace kasli::session

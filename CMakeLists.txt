@@ -22,6 +22,7 @@ add_library(kasli_core
   src/core/uuid.cpp
   src/ipc/line_protocol.cpp
   src/ipc/unix_socket.cpp
+  src/model/ollama_provider.cpp
   src/policy/policy_broker.cpp
   src/session/session_service.cpp
   src/tools/journal_tool.cpp
@@ -30,6 +31,13 @@ add_library(kasli_core
 )
 target_include_directories(kasli_core PUBLIC include)
 target_link_libraries(kasli_core PUBLIC nlohmann_json::nlohmann_json)
+
+if(KASLI_ENABLE_CURL AND CURL_FOUND)
+  target_compile_definitions(kasli_core PUBLIC KASLI_HAS_CURL=1)
+  target_link_libraries(kasli_core PRIVATE CURL::libcurl)
+else()
+  target_compile_definitions(kasli_core PUBLIC KASLI_HAS_CURL=0)
+endif()
 
 add_executable(kaslid src/kaslid/main.cpp)
 target_link_libraries(kaslid PRIVATE kasli_core)
@@ -85,6 +93,10 @@ catch_discover_tests(kasli_session_service_test TEST_PREFIX "session.")
 add_executable(kasli_model_context_test tests/unit/model_context_test.cpp)
 target_link_libraries(kasli_model_context_test PRIVATE kasli_core Catch2::Catch2WithMain)
 catch_discover_tests(kasli_model_context_test TEST_PREFIX "model.")
+
+add_executable(kasli_ollama_provider_test tests/unit/ollama_provider_test.cpp)
+target_link_libraries(kasli_ollama_provider_test PRIVATE kasli_core Catch2::Catch2WithMain)
+catch_discover_tests(kasli_ollama_provider_test TEST_PREFIX "model.")
 
 add_executable(kasli_line_protocol_test tests/unit/line_protocol_test.cpp)
 target_link_libraries(kasli_line_protocol_test PRIVATE kasli_core Catch2::Catch2WithMain)

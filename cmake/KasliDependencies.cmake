@@ -19,3 +19,7 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(Catch2 nlohmann_json CLI11)
+
+if(KASLI_ENABLE_CURL)
+  find_package(CURL)
+endif()

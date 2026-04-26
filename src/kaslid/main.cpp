@@ -3,6 +3,7 @@
 #include <kasli/core/uuid.hpp>
 #include <kasli/ipc/line_protocol.hpp>
 #include <kasli/ipc/unix_socket.hpp>
+#include <kasli/model/ollama_provider.hpp>
 #include <kasli/policy/policy_broker.hpp>
 #include <kasli/session/session_service.hpp>
 #include <kasli/tools/journal_tool.hpp>
@@ -124,6 +125,14 @@ std::string handle_request(const std::string& input,
       auto tool_request = request.at("tool").get<kasli::core::ToolRequest>();
       auto response = service.call_tool(tool_request, "cli");
       return kasli::ipc::make_tool_call_response(id, response).dump();
+    }
+
+    if (method == "ask") {
+      const std::string prompt = request.at("prompt").get<std::string>();
+      auto tool_request = request.at("tool").get<kasli::core::ToolRequest>();
+      kasli::model::OllamaProvider model("http://127.0.0.1:11434", "llama3.2");
+      const auto result = service.ask_with_tool(prompt, tool_request, model, "cli");
+      return kasli::ipc::make_ask_response(id, result.ok, result.answer, result.error).dump();
     }
 
     audit_protocol_error(audit, id, "unknown method");

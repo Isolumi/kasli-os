@@ -11,11 +11,19 @@ int main(int argc, char** argv) {
   std::string socket_path = "kaslid.sock";
   bool list_tools = false;
   std::string call_tool;
+  std::string ask_prompt;
+  std::string ask_tool = "system.info";
   app.add_option("--socket", socket_path, "Path to the kaslid Unix domain socket");
   auto* tools_list_option = app.add_flag("--tools-list", list_tools, "Request the daemon's tool list");
   auto* call_tool_option =
       app.add_option("--call-tool", call_tool, "Request a read-only tool call from the daemon");
+  auto* ask_option = app.add_option("--ask", ask_prompt, "Ask a question using daemon evidence");
+  auto* ask_tool_option =
+      app.add_option("--ask-tool", ask_tool, "Read-only evidence tool to use for --ask");
   tools_list_option->excludes(call_tool_option);
+  tools_list_option->excludes(ask_option);
+  call_tool_option->excludes(ask_option);
+  ask_tool_option->needs(ask_option);
 
   CLI11_PARSE(app, argc, argv);
 
@@ -30,6 +38,14 @@ int main(int argc, char** argv) {
         .params = {},
     };
     request = kasli::ipc::make_tool_call_request("cli-2", tool_request).dump();
+  } else if (!ask_prompt.empty()) {
+    kasli::core::ToolRequest tool_request{
+        .id = "cli-ask-tool-1",
+        .tool_name = ask_tool,
+        .risk = kasli::core::RiskClass::ReadOnly,
+        .params = {},
+    };
+    request = kasli::ipc::make_ask_request("cli-ask-1", ask_prompt, tool_request).dump();
   } else {
     std::cerr << app.help() << '\n';
     return 1;
