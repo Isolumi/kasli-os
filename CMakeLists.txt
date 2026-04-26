@@ -20,6 +20,8 @@ add_library(kasli_core
   src/core/json.cpp
   src/core/types.cpp
   src/policy/policy_broker.cpp
+  src/tools/system_info_tool.cpp
+  src/tools/tool_registry.cpp
 )
 target_include_directories(kasli_core PUBLIC include)
 target_link_libraries(kasli_core PUBLIC nlohmann_json::nlohmann_json)
@@ -39,3 +41,17 @@ catch_discover_tests(kasli_audit_log_test TEST_PREFIX "audit.")
 add_executable(kasli_policy_broker_test tests/unit/policy_broker_test.cpp)
 target_link_libraries(kasli_policy_broker_test PRIVATE kasli_core Catch2::Catch2WithMain)
 catch_discover_tests(kasli_policy_broker_test TEST_PREFIX "policy.")
+
+add_executable(kasli_tool_registry_test tests/unit/tool_registry_test.cpp)
+target_link_libraries(kasli_tool_registry_test PRIVATE kasli_core Catch2::Catch2WithMain)
+catch_discover_tests(kasli_tool_registry_test
+  TEST_PREFIX "tools."
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+add_executable(kasli_system_info_tool_test tests/unit/system_info_tool_test.cpp)
+target_link_libraries(kasli_system_info_tool_test PRIVATE kasli_core Catch2::Catch2WithMain)
+catch_discover_tests(kasli_system_info_tool_test
+  TEST_PREFIX "tools."
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
