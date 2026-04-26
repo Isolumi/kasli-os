@@ -21,6 +21,7 @@ add_library(kasli_core
   src/core/types.cpp
   src/core/uuid.cpp
   src/ipc/line_protocol.cpp
+  src/ipc/unix_socket.cpp
   src/policy/policy_broker.cpp
   src/session/session_service.cpp
   src/tools/system_info_tool.cpp
@@ -72,3 +73,7 @@ catch_discover_tests(kasli_session_service_test TEST_PREFIX "session.")
 add_executable(kasli_line_protocol_test tests/unit/line_protocol_test.cpp)
 target_link_libraries(kasli_line_protocol_test PRIVATE kasli_core Catch2::Catch2WithMain)
 catch_discover_tests(kasli_line_protocol_test TEST_PREFIX "ipc.")
+
+add_executable(kasli_unix_socket_test tests/integration/unix_socket_test.cpp)
+target_link_libraries(kasli_unix_socket_test PRIVATE kasli_core Catch2::Catch2WithMain)
+catch_discover_tests(kasli_unix_socket_test TEST_PREFIX "ipc.")

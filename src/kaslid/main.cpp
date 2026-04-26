@@ -2,6 +2,7 @@
 #include <kasli/core/types.hpp>
 #include <kasli/core/uuid.hpp>
 #include <kasli/ipc/line_protocol.hpp>
+#include <kasli/ipc/unix_socket.hpp>
 #include <kasli/policy/policy_broker.hpp>
 #include <kasli/session/session_service.hpp>
 #include <kasli/tools/system_info_tool.hpp>
@@ -12,32 +13,61 @@
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <optional>
+#include <stdexcept>
+#include <string>
 
 namespace {
 
-std::optional<std::filesystem::path> parse_audit_path(int argc, char** argv) {
-  std::optional<std::filesystem::path> audit_path;
+struct Options {
+  std::filesystem::path socket_path = "kaslid.sock";
+  std::filesystem::path audit_path = "kasli-audit.jsonl";
+  bool once = false;
+};
+
+std::optional<Options> parse_options(int argc, char** argv) {
+  Options options;
+  bool socket_seen = false;
+  bool audit_seen = false;
+
   for (int index = 1; index < argc; ++index) {
     const std::string arg = argv[index];
-    if (arg != "--audit-log") {
+    if (arg == "--once") {
+      if (options.once) {
+        std::cerr << "--once may only be provided once\n";
+        return std::nullopt;
+      }
+      options.once = true;
+      continue;
+    }
+
+    if (arg == "--socket" || arg == "--audit-log") {
+      bool& seen = (arg == "--socket") ? socket_seen : audit_seen;
+      if (seen) {
+        std::cerr << arg << " may only be provided once\n";
+        return std::nullopt;
+      }
+      seen = true;
+
+      if (index + 1 >= argc || std::string(argv[index + 1]).starts_with("--")) {
+        std::cerr << arg << " requires a path\n";
+        return std::nullopt;
+      }
+
+      if (arg == "--socket") {
+        options.socket_path = argv[++index];
+      } else {
+        options.audit_path = argv[++index];
+      }
+      continue;
+    }
+
+    {
       std::cerr << "unknown argument: " << arg << '\n';
       return std::nullopt;
     }
-
-    if (audit_path.has_value()) {
-      std::cerr << "--audit-log may only be provided once\n";
-      return std::nullopt;
-    }
-
-    if (index + 1 >= argc || std::string(argv[index + 1]).starts_with("--")) {
-      std::cerr << "--audit-log requires a path\n";
-      return std::nullopt;
-    }
-
-    audit_path = argv[++index];
   }
 
-  return audit_path.value_or(std::filesystem::path{"kasli-audit.jsonl"});
+  return options;
 }
 
 std::string request_id_or_unknown(const nlohmann::json& request) {
@@ -60,52 +90,72 @@ void audit_protocol_error(const kasli::audit::AuditLog& audit,
   });
 }
 
+std::string handle_request(const std::string& input,
+                           const kasli::session::SessionService& service,
+                           const kasli::audit::AuditLog& audit) {
+  std::string id = "unknown";
+  try {
+    auto request = nlohmann::json::parse(input);
+    id = request_id_or_unknown(request);
+    if (id == "unknown") {
+      throw std::invalid_argument("request id is required");
+    }
+
+    const std::string method = request.at("method").get<std::string>();
+
+    if (method == "tools.list") {
+      return nlohmann::json{{"id", id}, {"ok", true}, {"tools", service.list_tools()}}.dump();
+    }
+
+    if (method == "tool.call") {
+      auto tool_request = request.at("tool").get<kasli::core::ToolRequest>();
+      auto response = service.call_tool(tool_request, "cli");
+      return kasli::ipc::make_tool_call_response(id, response).dump();
+    }
+
+    audit_protocol_error(audit, id, "unknown method");
+    return kasli::ipc::make_error_response(id, "unknown method").dump();
+  } catch (const std::exception& error) {
+    audit_protocol_error(audit, id, error.what());
+    return kasli::ipc::make_error_response(id, error.what()).dump();
+  }
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
-  auto audit_path = parse_audit_path(argc, argv);
-  if (!audit_path.has_value()) {
+  const auto options = parse_options(argc, argv);
+  if (!options.has_value()) {
     return 2;
   }
 
-  kasli::tools::ToolRegistry registry;
-  registry.add(std::make_unique<kasli::tools::SystemInfoTool>());
+  try {
+    kasli::tools::ToolRegistry registry;
+    registry.add(std::make_unique<kasli::tools::SystemInfoTool>());
 
-  kasli::policy::PolicyBroker policy(registry.policies());
-  kasli::audit::AuditLog audit(*audit_path);
-  kasli::session::SessionService service(registry, policy, audit);
+    kasli::policy::PolicyBroker policy(registry.policies());
+    kasli::audit::AuditLog audit(options->audit_path);
+    kasli::session::SessionService service(registry, policy, audit);
+    kasli::ipc::UnixSocketServer server(options->socket_path);
 
-  std::string line;
-  while (std::getline(std::cin, line)) {
-    std::string id = "unknown";
-    try {
-      auto request = nlohmann::json::parse(line);
-      id = request_id_or_unknown(request);
-      if (id == "unknown") {
-        throw std::invalid_argument("request id is required");
+    while (true) {
+      try {
+        server.accept_one([&](const std::string& request) {
+          return handle_request(request, service, audit);
+        });
+        if (options->once) {
+          break;
+        }
+      } catch (const std::exception& error) {
+        std::cerr << error.what() << '\n';
+        if (options->once) {
+          return 1;
+        }
       }
-
-      const std::string method = request.at("method").get<std::string>();
-
-      if (method == "tools.list") {
-        std::cout << nlohmann::json{{"id", id}, {"ok", true}, {"tools", service.list_tools()}}.dump()
-                  << '\n';
-        continue;
-      }
-
-      if (method == "tool.call") {
-        auto tool_request = request.at("tool").get<kasli::core::ToolRequest>();
-        auto response = service.call_tool(tool_request, "cli");
-        std::cout << kasli::ipc::make_tool_call_response(id, response).dump() << '\n';
-        continue;
-      }
-
-      audit_protocol_error(audit, id, "unknown method");
-      std::cout << kasli::ipc::make_error_response(id, "unknown method").dump() << '\n';
-    } catch (const std::exception& error) {
-      audit_protocol_error(audit, id, error.what());
-      std::cout << kasli::ipc::make_error_response(id, error.what()).dump() << '\n';
     }
+  } catch (const std::exception& error) {
+    std::cerr << error.what() << '\n';
+    return 1;
   }
 
   return 0;

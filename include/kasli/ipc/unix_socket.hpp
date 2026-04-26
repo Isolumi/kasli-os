@@ -1,0 +1,28 @@
+#pragma once
+
+#include <filesystem>
+#include <functional>
+#include <string>
+
+namespace kasli::ipc {
+
+class UnixSocketServer {
+ public:
+  explicit UnixSocketServer(std::filesystem::path socket_path);
+  ~UnixSocketServer();
+
+  UnixSocketServer(const UnixSocketServer&) = delete;
+  UnixSocketServer& operator=(const UnixSocketServer&) = delete;
+
+  void accept_one(const std::function<std::string(const std::string&)>& handler) const;
+
+ private:
+  int fd_ = -1;
+  std::filesystem::path socket_path_;
+  bool owns_socket_path_ = false;
+};
+
+std::string request_over_unix_socket(const std::filesystem::path& socket_path,
+                                     const std::string& request);
+
+}  // namespace kasli::ipc
