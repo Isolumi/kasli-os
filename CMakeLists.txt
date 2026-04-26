@@ -19,6 +19,7 @@ add_library(kasli_core
   src/audit/audit_log.cpp
   src/core/json.cpp
   src/core/types.cpp
+  src/policy/policy_broker.cpp
 )
 target_include_directories(kasli_core PUBLIC include)
 target_link_libraries(kasli_core PUBLIC nlohmann_json::nlohmann_json)
@@ -34,3 +35,7 @@ catch_discover_tests(kasli_core_types_test TEST_PREFIX "core_types.")
 add_executable(kasli_audit_log_test tests/unit/audit_log_test.cpp)
 target_link_libraries(kasli_audit_log_test PRIVATE kasli_core Catch2::Catch2WithMain)
 catch_discover_tests(kasli_audit_log_test TEST_PREFIX "audit.")
+
+add_executable(kasli_policy_broker_test tests/unit/policy_broker_test.cpp)
+target_link_libraries(kasli_policy_broker_test PRIVATE kasli_core Catch2::Catch2WithMain)
+catch_discover_tests(kasli_policy_broker_test TEST_PREFIX "policy.")
