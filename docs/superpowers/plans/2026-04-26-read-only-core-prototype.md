@@ -3012,7 +3012,7 @@ git commit -m "feat: add live systemd read-only adapters"
 - Create: `docs/research/prototype-notes.md`
 - Modify: `docs/superpowers/plans/2026-04-26-read-only-core-prototype.md`
 
-- [ ] **Step 1: Create prototype notes**
+- [x] **Step 1: Create prototype notes**
 
 Create `docs/research/prototype-notes.md`:
 
@@ -3047,7 +3047,7 @@ printf '%s\n' "$(./build/kasli --ask 'What OS is this?' --ask-tool system.info)"
 ```
 ````
 
-- [ ] **Step 2: Run final verification**
+- [x] **Step 2: Run final verification**
 
 Run:
 
@@ -3060,7 +3060,7 @@ git status --short
 
 Expected: CMake configures, build succeeds, tests pass, and `git status --short` shows only files intentionally created in Task 13.
 
-- [ ] **Step 3: Commit final notes**
+- [x] **Step 3: Commit final notes**
 
 ```sh
 git add docs/research/prototype-notes.md docs/superpowers/plans/2026-04-26-read-only-core-prototype.md
