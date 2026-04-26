@@ -5,9 +5,11 @@
 #include <kasli/ipc/unix_socket.hpp>
 #include <kasli/policy/policy_broker.hpp>
 #include <kasli/session/session_service.hpp>
+#include <kasli/tools/journal_tool.hpp>
 #include <kasli/tools/system_info_tool.hpp>
 #include <kasli/tools/tool_registry.hpp>
 
+#include <cstdlib>
 #include <filesystem>
 #include <iostream>
 #include <memory>
@@ -17,6 +19,10 @@
 #include <string>
 
 namespace {
+
+#ifndef KASLI_DEFAULT_JOURNAL_FIXTURE
+#define KASLI_DEFAULT_JOURNAL_FIXTURE "tests/fixtures/journal/ssh_failed.jsonl"
+#endif
 
 struct Options {
   std::filesystem::path socket_path = "kaslid.sock";
@@ -90,6 +96,13 @@ void audit_protocol_error(const kasli::audit::AuditLog& audit,
   });
 }
 
+std::filesystem::path journal_fixture_path() {
+  if (const char* fixture = std::getenv("KASLI_JOURNAL_FIXTURE")) {
+    return fixture;
+  }
+  return KASLI_DEFAULT_JOURNAL_FIXTURE;
+}
+
 std::string handle_request(const std::string& input,
                            const kasli::session::SessionService& service,
                            const kasli::audit::AuditLog& audit) {
@@ -132,6 +145,7 @@ int main(int argc, char** argv) {
   try {
     kasli::tools::ToolRegistry registry;
     registry.add(std::make_unique<kasli::tools::SystemInfoTool>());
+    registry.add(std::make_unique<kasli::tools::JournalFixtureTool>(journal_fixture_path()));
 
     kasli::policy::PolicyBroker policy(registry.policies());
     kasli::audit::AuditLog audit(options->audit_path);

@@ -24,6 +24,7 @@ add_library(kasli_core
   src/ipc/unix_socket.cpp
   src/policy/policy_broker.cpp
   src/session/session_service.cpp
+  src/tools/journal_tool.cpp
   src/tools/system_info_tool.cpp
   src/tools/tool_registry.cpp
 )
@@ -32,6 +33,10 @@ target_link_libraries(kasli_core PUBLIC nlohmann_json::nlohmann_json)
 
 add_executable(kaslid src/kaslid/main.cpp)
 target_link_libraries(kaslid PRIVATE kasli_core)
+target_compile_definitions(kaslid
+  PRIVATE
+    KASLI_DEFAULT_JOURNAL_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/journal/ssh_failed.jsonl"
+)
 
 add_executable(kasli src/kasli-cli/main.cpp)
 target_link_libraries(kasli PRIVATE kasli_core CLI11::CLI11)
@@ -62,6 +67,13 @@ catch_discover_tests(kasli_tool_registry_test
 add_executable(kasli_system_info_tool_test tests/unit/system_info_tool_test.cpp)
 target_link_libraries(kasli_system_info_tool_test PRIVATE kasli_core Catch2::Catch2WithMain)
 catch_discover_tests(kasli_system_info_tool_test
+  TEST_PREFIX "tools."
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+add_executable(kasli_journal_tool_test tests/unit/journal_tool_test.cpp)
+target_link_libraries(kasli_journal_tool_test PRIVATE kasli_core Catch2::Catch2WithMain)
+catch_discover_tests(kasli_journal_tool_test
   TEST_PREFIX "tools."
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
