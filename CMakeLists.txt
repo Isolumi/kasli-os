@@ -20,6 +20,7 @@ add_library(kasli_core
   src/core/json.cpp
   src/core/types.cpp
   src/core/uuid.cpp
+  src/ipc/line_protocol.cpp
   src/policy/policy_broker.cpp
   src/session/session_service.cpp
   src/tools/system_info_tool.cpp
@@ -27,6 +28,12 @@ add_library(kasli_core
 )
 target_include_directories(kasli_core PUBLIC include)
 target_link_libraries(kasli_core PUBLIC nlohmann_json::nlohmann_json)
+
+add_executable(kaslid src/kaslid/main.cpp)
+target_link_libraries(kaslid PRIVATE kasli_core)
+
+add_executable(kasli src/kasli-cli/main.cpp)
+target_link_libraries(kasli PRIVATE kasli_core CLI11::CLI11)
 
 add_executable(kasli_smoke_test tests/unit/smoke_test.cpp)
 target_link_libraries(kasli_smoke_test PRIVATE Catch2::Catch2WithMain)
@@ -61,3 +68,7 @@ catch_discover_tests(kasli_system_info_tool_test
 add_executable(kasli_session_service_test tests/unit/session_service_test.cpp)
 target_link_libraries(kasli_session_service_test PRIVATE kasli_core Catch2::Catch2WithMain)
 catch_discover_tests(kasli_session_service_test TEST_PREFIX "session.")
+
+add_executable(kasli_line_protocol_test tests/unit/line_protocol_test.cpp)
+target_link_libraries(kasli_line_protocol_test PRIVATE kasli_core Catch2::Catch2WithMain)
+catch_discover_tests(kasli_line_protocol_test TEST_PREFIX "ipc.")
