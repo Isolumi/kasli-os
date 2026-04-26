@@ -39,8 +39,7 @@ TEST_CASE("systemd unit status tool reports unavailable when systemd is not buil
 #endif
 }
 
-TEST_CASE("systemd unit status tool requires unit when systemd is built") {
-#if KASLI_HAS_SYSTEMD
+TEST_CASE("systemd unit status tool requires unit") {
   kasli::tools::SystemdUnitStatusTool tool;
   auto response = tool.call(kasli::core::ToolRequest{
       .id = "req-systemd-status-missing-unit",
@@ -51,5 +50,18 @@ TEST_CASE("systemd unit status tool requires unit when systemd is built") {
   REQUIRE(response.status == kasli::core::ToolStatus::Error);
   REQUIRE(response.message == "systemd.unit.status requires a non-empty unit parameter");
   REQUIRE(response.evidence.empty());
-#endif
+}
+
+TEST_CASE("systemd unit status tool rejects empty unit") {
+  kasli::tools::SystemdUnitStatusTool tool;
+  auto response = tool.call(kasli::core::ToolRequest{
+      .id = "req-systemd-status-empty-unit",
+      .tool_name = "systemd.unit.status",
+      .risk = kasli::core::RiskClass::ReadOnly,
+      .params = {{"unit", "  "}},
+  });
+
+  REQUIRE(response.status == kasli::core::ToolStatus::Error);
+  REQUIRE(response.message == "systemd.unit.status requires a non-empty unit parameter");
+  REQUIRE(response.evidence.empty());
 }

@@ -166,9 +166,9 @@ int main(int argc, char** argv) {
   try {
     kasli::tools::ToolRegistry registry;
     registry.add(std::make_unique<kasli::tools::SystemInfoTool>());
-#if KASLI_HAS_SYSTEMD
     registry.add(std::make_unique<kasli::tools::SystemdUnitsTool>());
     registry.add(std::make_unique<kasli::tools::SystemdUnitStatusTool>());
+#if KASLI_HAS_SYSTEMD
     registry.add(std::make_unique<kasli::tools::LiveJournalTool>());
 #else
     registry.add(std::make_unique<kasli::tools::JournalFixtureTool>(journal_fixture_path()));

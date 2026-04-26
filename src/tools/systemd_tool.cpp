@@ -268,12 +268,12 @@ core::RiskClass SystemdUnitStatusTool::risk() const {
 }
 
 core::ToolResponse SystemdUnitStatusTool::call(const core::ToolRequest& request) const {
-#if KASLI_HAS_SYSTEMD
   const auto unit = request.params.contains("unit") ? request.params.at("unit") : "";
   if (is_blank(unit)) {
     return missing_unit_response(request);
   }
 
+#if KASLI_HAS_SYSTEMD
   BusHandle bus;
   int result = sd_bus_open_system(&bus.bus);
   if (result < 0) {

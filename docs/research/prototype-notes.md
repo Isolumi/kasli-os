@@ -28,6 +28,9 @@ sleep 1
 ./build/kaslid --socket build/kaslid.sock --audit-log build/dev-audit.jsonl --once &
 sleep 1
 ./build/kasli --socket build/kaslid.sock --call-tool system.info
+./build/kaslid --socket build/kaslid.sock --audit-log build/dev-audit.jsonl --once &
+sleep 1
+./build/kasli --socket build/kaslid.sock --call-tool journal.query --param unit=ssh.service
 ```
 
 Ollama-backed `ask` requires Ollama to be running locally with the `llama3.2` model available. If Ollama is not running or the model is unavailable, `ask` returns a JSON error response and audits `model.error`.
@@ -56,11 +59,14 @@ sleep 1
 ./build/kaslid --socket build/kaslid.sock --audit-log build/dev-audit.jsonl --once &
 sleep 1
 ./build/kasli --socket build/kaslid.sock --call-tool system.info
+./build/kaslid --socket build/kaslid.sock --audit-log build/dev-audit.jsonl --once &
+sleep 1
+./build/kasli --socket build/kaslid.sock --call-tool journal.query --param unit=ssh.service
 git status --short
 ```
 
-Observed outcome after the hardening pass: CMake configured, the build succeeded, and `ctest` passed 64/64 tests.
+Observed outcome after the hardening pass: CMake configured, the build succeeded, and `ctest` passed 65/65 tests.
 
-CLI smoke checks used the implemented Unix socket `--once` path. `--tools-list` returned `ok: true` with `system.info` and `journal.query`; `--call-tool system.info` returned `ok: true` with Darwin 25.3.0 arm64 evidence.
+CLI smoke checks used the implemented Unix socket `--once` path. `--tools-list` returned `ok: true` with `system.info`, `systemd.units.list`, `systemd.unit.status`, and `journal.query`; `--call-tool system.info` returned `ok: true` with Darwin 25.3.0 arm64 evidence. `--call-tool journal.query --param unit=ssh.service` returned `ok: true` with bounded, redacted fixture journal evidence.
 
-`journal.query` tests and any direct journal smoke checks must pass `unit=ssh.service` or another explicit unit selector. Ollama live `ask` was skipped because this macOS verification did not confirm a local Ollama daemon with `llama3.2` available. Live Linux systemd checks were skipped because the verification ran on macOS without libsystemd; the unavailable systemd test coverage passed for `systemd.units.list` and `systemd.unit.status`.
+The CLI accepts repeatable `--param key=value` tool parameters. `journal.query` tests and any direct journal smoke checks must pass `--param unit=ssh.service` or another explicit unit selector. On macOS/non-systemd builds, `systemd.units.list` and `systemd.unit.status` are registered by the daemon and return unavailable errors instead of silently disappearing from the typed registry. Ollama live `ask` was skipped because this macOS verification did not confirm a local Ollama daemon with `llama3.2` available. Live Linux systemd checks were skipped because the verification ran on macOS without libsystemd; the unavailable systemd test coverage passed for `systemd.units.list` and `systemd.unit.status`.
