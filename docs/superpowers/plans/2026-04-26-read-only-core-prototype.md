@@ -2994,7 +2994,9 @@ Run:
 ```sh
 cmake --build build
 ctest --test-dir build --output-on-failure
-printf '%s\n' "$(./build/kasli --call-tool systemd.units.list)" | ./build/kaslid --audit-log build/dev-audit.jsonl
+./build/kaslid --socket build/kaslid.sock --audit-log build/dev-audit.jsonl --once &
+sleep 1
+./build/kasli --socket build/kaslid.sock --call-tool systemd.units.list
 ```
 
 Expected: tests pass. On Linux with libsystemd, the manual check returns up to 200 loaded units. On non-Linux or without libsystemd, the build still succeeds and the daemon uses the fixture-backed journal tool.
@@ -3036,14 +3038,22 @@ Manual checks:
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build
 ctest --test-dir build --output-on-failure
-printf '%s\n' "$(./build/kasli --tools-list)" | ./build/kaslid --audit-log build/dev-audit.jsonl
-printf '%s\n' "$(./build/kasli --call-tool system.info)" | ./build/kaslid --audit-log build/dev-audit.jsonl
+./build/kaslid --socket build/kaslid.sock --audit-log build/dev-audit.jsonl --once &
+sleep 1
+./build/kasli --socket build/kaslid.sock --tools-list
+./build/kaslid --socket build/kaslid.sock --audit-log build/dev-audit.jsonl --once &
+sleep 1
+./build/kasli --socket build/kaslid.sock --call-tool system.info
 ```
 
-If Ollama is running:
+Ollama-backed `ask` requires Ollama to be running locally with the `llama3.2` model available. If Ollama is not running or the model is unavailable, `ask` returns a JSON error response and audits `model.error`.
+
+If Ollama is running with `llama3.2` available:
 
 ```sh
-printf '%s\n' "$(./build/kasli --ask 'What OS is this?' --ask-tool system.info)" | ./build/kaslid --audit-log build/dev-audit.jsonl
+./build/kaslid --socket build/kaslid.sock --audit-log build/dev-audit.jsonl --once &
+sleep 1
+./build/kasli --socket build/kaslid.sock --ask 'What OS is this?' --ask-tool system.info
 ```
 ````
 
@@ -3058,7 +3068,7 @@ ctest --test-dir build --output-on-failure
 git status --short
 ```
 
-Expected: CMake configures, build succeeds, tests pass, and `git status --short` shows only files intentionally created in Task 13.
+Expected: CMake configures, build succeeds, tests pass, and `git status --short` shows only files intentionally created or modified for Task 13.
 
 - [x] **Step 3: Commit final notes**
 
@@ -3079,7 +3089,7 @@ Spec coverage:
 - Audit logging is covered by Task 3 and integrated in Task 6.
 - Curated model context is covered by Task 10 and Ollama support by Task 11.
 - Read-only system state is covered by Task 5, fixture journal in Task 9, and live Linux adapters in Task 12.
-- Tests are introduced before implementation in every task.
+- Tests are introduced before implementation for the prototype tasks where feasible; the Task 12 live systemd code path was statically inspected on macOS, with unavailable-path tests covering non-systemd builds.
 
 Blocked-marker scan:
 

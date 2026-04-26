@@ -27,10 +27,42 @@ sleep 1
 ./build/kasli --socket build/kaslid.sock --call-tool system.info
 ```
 
-If Ollama is running:
+Ollama-backed `ask` requires Ollama to be running locally with the `llama3.2` model available. If Ollama is not running or the model is unavailable, `ask` returns a JSON error response and audits `model.error`.
+
+If Ollama is running with `llama3.2` available:
 
 ```sh
 ./build/kaslid --socket build/kaslid.sock --audit-log build/dev-audit.jsonl --once &
 sleep 1
 ./build/kasli --socket build/kaslid.sock --ask 'What OS is this?' --ask-tool system.info
 ```
+
+## Verification Results (2026-04-26)
+
+Environment: macOS/Darwin arm64 (`Darwin Mac 25.3.0`), Debug build. CMake did not find PkgConfig, so libsystemd was not built and the live Linux systemd path was not exercised in this run.
+
+Commands run:
+
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+ctest --test-dir build --output-on-failure
+./build/kaslid --socket build/kaslid.sock --audit-log build/dev-audit.jsonl --once &
+./build/kasli --socket build/kaslid.sock --tools-list
+./build/kaslid --socket build/kaslid.sock --audit-log build/dev-audit.jsonl --once &
+./build/kasli --socket build/kaslid.sock --call-tool system.info
+git status --short
+```
+
+Observed outcome: CMake configured, the build succeeded, and `ctest` passed 53/53 tests.
+
+`git status --short` after the verification commands and before commit:
+
+```text
+ M docs/research/prototype-notes.md
+ M docs/superpowers/plans/2026-04-26-read-only-core-prototype.md
+```
+
+CLI smoke checks used the implemented Unix socket `--once` path. `--tools-list` returned `ok: true` with `system.info` and `journal.query`; `--call-tool system.info` returned `ok: true` with Darwin 25.3.0 arm64 evidence.
+
+Ollama live `ask` was skipped because this macOS verification did not confirm a local Ollama daemon with `llama3.2` available. Live Linux systemd checks were skipped because the verification ran on macOS without libsystemd; the unavailable systemd test coverage passed.
