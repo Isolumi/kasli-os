@@ -14,7 +14,8 @@ Implemented trust boundaries:
 - Tool audit records include bounded request params, policy decision, response status/message, and evidence IDs/sources/summaries/timestamps. Evidence bodies are not copied into audit details.
 - Model audit records include bounded prompt text, evidence IDs/sources/count, `model.response` metadata for successful calls, and timestamped `model.skipped`/`model.error` records for failed paths.
 - `journal.query` requires an explicit non-empty `unit` selector in fixture and live paths. Missing or empty units return an error instead of broad logs.
-- `systemd.unit.status` is implemented for `KASLI_HAS_SYSTEMD` builds as a read-only DBus status/property query. Live systemd and journal paths are gated behind `KASLI_HAS_SYSTEMD`; macOS builds use fixture journal and can only exercise the systemd unavailable behavior.
+- `systemd.units.list` drains the D-Bus row it enters before applying the 200-unit result cap, so truncation can still return bounded successful evidence.
+- `systemd.unit.status` is implemented for `KASLI_HAS_SYSTEMD` builds as a read-only DBus status/property query. For `.service` units it includes `Result`, `ExecMainCode`, and `ExecMainStatus` when available. Live systemd and journal paths are gated behind `KASLI_HAS_SYSTEMD`; macOS builds use fixture journal and can only exercise the systemd unavailable behavior.
 
 Manual checks:
 
@@ -65,7 +66,7 @@ sleep 1
 git status --short
 ```
 
-Observed outcome after the hardening pass: CMake configured, the build succeeded, and `ctest` passed 65/65 tests.
+Observed outcome after the hardening pass: CMake configured, the build succeeded, and `ctest` passed 68/68 tests.
 
 CLI smoke checks used the implemented Unix socket `--once` path. `--tools-list` returned `ok: true` with `system.info`, `systemd.units.list`, `systemd.unit.status`, and `journal.query`; `--call-tool system.info` returned `ok: true` with Darwin 25.3.0 arm64 evidence. `--call-tool journal.query --param unit=ssh.service` returned `ok: true` with bounded, redacted fixture journal evidence.
 
