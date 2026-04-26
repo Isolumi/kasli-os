@@ -82,6 +82,10 @@ add_executable(kasli_session_service_test tests/unit/session_service_test.cpp)
 target_link_libraries(kasli_session_service_test PRIVATE kasli_core Catch2::Catch2WithMain)
 catch_discover_tests(kasli_session_service_test TEST_PREFIX "session.")
 
+add_executable(kasli_model_context_test tests/unit/model_context_test.cpp)
+target_link_libraries(kasli_model_context_test PRIVATE kasli_core Catch2::Catch2WithMain)
+catch_discover_tests(kasli_model_context_test TEST_PREFIX "model.")
+
 add_executable(kasli_line_protocol_test tests/unit/line_protocol_test.cpp)
 target_link_libraries(kasli_line_protocol_test PRIVATE kasli_core Catch2::Catch2WithMain)
 catch_discover_tests(kasli_line_protocol_test TEST_PREFIX "ipc.")

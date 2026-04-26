@@ -1,6 +1,7 @@
 #pragma once
 
 #include <kasli/audit/audit_log.hpp>
+#include <kasli/model/model_provider.hpp>
 #include <kasli/policy/policy_broker.hpp>
 #include <kasli/tools/tool_registry.hpp>
 
@@ -17,6 +18,10 @@ class SessionService {
 
   std::vector<std::string> list_tools() const;
   core::ToolResponse call_tool(const core::ToolRequest& request, const std::string& actor) const;
+  std::string ask_with_tool(const std::string& prompt,
+                            const core::ToolRequest& request,
+                            const model::ModelProvider& model,
+                            const std::string& actor) const;
 
  private:
   const tools::ToolRegistry& registry_;

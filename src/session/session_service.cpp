@@ -67,4 +67,35 @@ core::ToolResponse SessionService::call_tool(const core::ToolRequest& request,
   return response;
 }
 
+std::string SessionService::ask_with_tool(const std::string& prompt,
+                                          const core::ToolRequest& request,
+                                          const model::ModelProvider& model,
+                                          const std::string& actor) const {
+  auto tool_response = call_tool(request, actor);
+  if (tool_response.status != core::ToolStatus::Ok) {
+    audit_.append(core::AuditEvent{
+        .id = core::make_event_id(),
+        .timestamp = "",
+        .actor = actor,
+        .type = "model.skipped",
+        .summary = prompt,
+        .details = {{"request_id", request.id},
+                    {"tool_status", core::to_string(tool_response.status)},
+                    {"reason", tool_response.message}},
+    });
+    return "Unable to answer because tool call did not succeed: " + tool_response.message;
+  }
+
+  audit_.append(core::AuditEvent{
+      .id = core::make_event_id(),
+      .timestamp = "",
+      .actor = actor,
+      .type = "model.request",
+      .summary = prompt,
+      .details = {{"request_id", request.id},
+                  {"evidence_count", std::to_string(tool_response.evidence.size())}},
+  });
+  return model.complete(model::ModelRequest{.prompt = prompt, .evidence = tool_response.evidence});
+}
+
 }  // namespace kasli::session
