@@ -23,3 +23,8 @@ FetchContent_MakeAvailable(Catch2 nlohmann_json CLI11)
 if(KASLI_ENABLE_CURL)
   find_package(CURL)
 endif()
+
+find_package(PkgConfig)
+if(PkgConfig_FOUND)
+  pkg_check_modules(LIBSYSTEMD IMPORTED_TARGET libsystemd)
+endif()

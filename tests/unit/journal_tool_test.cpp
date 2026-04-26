@@ -149,3 +149,19 @@ TEST_CASE("journal fixture tool redacts common journal secret forms") {
   REQUIRE(response.evidence.at(0).body.find("Authorization: Bearer [REDACTED]") != std::string::npos);
   REQUIRE(response.evidence.at(0).body.find("token=\"[REDACTED]\"") != std::string::npos);
 }
+
+TEST_CASE("live journal tool reports unavailable when systemd is not built") {
+#if !KASLI_HAS_SYSTEMD
+  kasli::tools::LiveJournalTool tool;
+  auto response = tool.call(kasli::core::ToolRequest{
+      .id = "req-live-journal-unavailable",
+      .tool_name = "journal.query",
+      .risk = kasli::core::RiskClass::ReadOnly,
+      .params = {{"unit", "ssh.service"}},
+  });
+
+  REQUIRE(response.status == kasli::core::ToolStatus::Error);
+  REQUIRE(response.message == "journal support was not built");
+  REQUIRE(response.evidence.empty());
+#endif
+}
