@@ -19,7 +19,9 @@ add_library(kasli_core
   src/audit/audit_log.cpp
   src/core/json.cpp
   src/core/types.cpp
+  src/core/uuid.cpp
   src/policy/policy_broker.cpp
+  src/session/session_service.cpp
   src/tools/system_info_tool.cpp
   src/tools/tool_registry.cpp
 )
@@ -55,3 +57,7 @@ catch_discover_tests(kasli_system_info_tool_test
   TEST_PREFIX "tools."
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
+
+add_executable(kasli_session_service_test tests/unit/session_service_test.cpp)
+target_link_libraries(kasli_session_service_test PRIVATE kasli_core Catch2::Catch2WithMain)
+catch_discover_tests(kasli_session_service_test TEST_PREFIX "session.")
