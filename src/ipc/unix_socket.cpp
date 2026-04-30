@@ -238,7 +238,6 @@ UnixSocketServer::UnixSocketServer(std::filesystem::path socket_path)
   }
 
   try {
-    set_socket_timeouts(fd_);
     suppress_sigpipe(fd_);
     const sockaddr_un address = make_address(socket_path_);
     if (::bind(fd_, reinterpret_cast<const sockaddr*>(&address), sizeof(address)) != 0) {
@@ -273,7 +272,13 @@ void UnixSocketServer::accept_one(
   int client_fd = -1;
   while (client_fd < 0) {
     client_fd = ::accept(fd_, nullptr, nullptr);
-    if (client_fd < 0 && errno != EINTR) {
+    if (client_fd < 0 && errno == EINTR) {
+      continue;
+    }
+    if (client_fd < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+      continue;
+    }
+    if (client_fd < 0) {
       throw syscall_error("accept");
     }
   }
