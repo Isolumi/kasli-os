@@ -31,6 +31,7 @@ Current registered tools:
 
 - `system.info`
 - `packages.recent_changes`
+- `packages.list`
 - `systemd.units.list`
 - `systemd.unit.status`
 - `services.failed`
@@ -59,6 +60,22 @@ Current behavior:
 - returns `no_package_changes=true` when readable logs exist but no package
   changes are found
 - stores at most 100 recent package-change rows
+- marks `truncated=true` when more rows exist
+
+Verified on Fedora Linux 43.
+
+### `packages.list`
+
+Lists bounded installed package inventory on RPM systems.
+
+Current behavior:
+
+- runs a fixed `rpm -qa --qf` query with no shell and no caller-controlled flags
+- enforces command timeout and output-size limits
+- returns `packages_count=<n>`
+- returns `no_packages=true` when the query succeeds but no valid package rows
+  are found
+- stores at most 500 installed package rows
 - marks `truncated=true` when more rows exist
 
 Verified on Fedora Linux 43.
@@ -158,17 +175,16 @@ Previous local macOS checkout before `services.failed`:
 The macOS checkout should be retested after pulling the `services.failed`
 commit.
 
-Fedora Linux 43 KDE checkout after `packages.recent_changes` and
-`services.enabled`:
+Fedora Linux 43 KDE checkout after `packages.list`:
 
 ```text
-92/92 tests passed
+99/99 tests passed
 ```
 
 Fresh daemon/CLI checks passed on Fedora Linux 43 for `system.info`,
 `systemd.units.list`, `systemd.unit.status`, `journal.query`,
 `services.failed`, `services.enabled`, `packages.recent_changes`,
-`service.diagnose`, and audit log metadata.
+`packages.list`, `service.diagnose`, and audit log metadata.
 
 ## How To Verify Locally
 
@@ -192,6 +208,7 @@ In another terminal:
 ./build/kasli --socket build/kaslid.sock --tools-list
 ./build/kasli --socket build/kaslid.sock --call-tool system.info
 ./build/kasli --socket build/kaslid.sock --call-tool packages.recent_changes
+./build/kasli --socket build/kaslid.sock --call-tool packages.list
 ./build/kasli --socket build/kaslid.sock --call-tool services.failed
 ./build/kasli --socket build/kaslid.sock --call-tool services.enabled
 ./build/kasli --socket build/kaslid.sock --call-tool service.diagnose --param unit=ssh.service
@@ -221,8 +238,7 @@ Kasli still cannot:
 - restart, enable, or disable services
 - edit config files
 - create or restore rollback snapshots
-- inspect installed package inventory or detailed hardware, battery, GPU, disk,
-  network, or user state
+- inspect detailed hardware, battery, GPU, disk, network, or user state
 - select tools automatically for arbitrary questions
 - perform privileged admin actions
 - provide a desktop UI
@@ -234,7 +250,6 @@ These are intentional limits until the read-only evidence layer is reliable.
 
 Near-term read-only tools:
 
-- `packages.list`
 - `hardware.summary`
 - `disk.usage`
 - `network.summary`

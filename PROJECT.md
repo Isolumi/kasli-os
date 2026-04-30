@@ -89,9 +89,9 @@ kaslid daemon
   |     allows only trusted read-only tools in the current prototype
   |
   +-- typed tool registry
-  |     owns system.info, packages.recent_changes, journal.query,
-  |     systemd.units.list, systemd.unit.status, services.failed,
-  |     services.enabled, service.diagnose
+  |     owns system.info, packages.recent_changes, packages.list,
+  |     journal.query, systemd.units.list, systemd.unit.status,
+  |     services.failed, services.enabled, service.diagnose
   |
   +-- audit log
   |     append-only JSONL event stream
@@ -132,6 +132,7 @@ It currently supports:
 ./build/kasli --socket build/kaslid.sock --tools-list
 ./build/kasli --socket build/kaslid.sock --call-tool system.info
 ./build/kasli --socket build/kaslid.sock --call-tool packages.recent_changes
+./build/kasli --socket build/kaslid.sock --call-tool packages.list
 ./build/kasli --socket build/kaslid.sock --call-tool journal.query --param unit=ssh.service
 ./build/kasli --socket build/kaslid.sock --call-tool services.failed
 ./build/kasli --socket build/kaslid.sock --call-tool services.enabled
@@ -171,6 +172,15 @@ The current implementation parses package install, upgrade, downgrade, remove,
 and reinstall rows, ignores DNF5 RPM callback stop/scriptlet noise, caps output
 at 100 recent rows, and marks truncated output. It is read-only log evidence,
 not package mutation.
+
+### `packages.list`
+
+Lists bounded installed package inventory on RPM systems.
+
+The production backend runs a fixed `rpm -qa --qf` query with no shell and no
+caller-controlled flags. It enforces a timeout and command-output cap, then
+returns up to 500 installed package rows as bounded evidence. This is read-only
+inventory evidence, not package mutation.
 
 ### `systemd.units.list`
 
@@ -436,6 +446,7 @@ The current test suite covers:
 - systemd status evidence formatting
 - bounded systemd unit-list formatting
 - package history log parsing and bounded package-change evidence
+- fixed RPM package inventory parsing and bounded package-list evidence
 - enabled service unit-file listing and bounded evidence
 - service diagnosis aggregation and partial-failure behavior
 - session orchestration
@@ -455,7 +466,7 @@ ctest --test-dir build --output-on-failure
 Expected current result:
 
 ```text
-92/92 tests passed
+99/99 tests passed
 ```
 
 ## Supported Test Devices
@@ -557,7 +568,6 @@ The project cannot currently:
 - edit config files
 - create rollback snapshots
 - restore rollback snapshots
-- inspect installed package inventory
 - inspect desktop application state
 - inspect user accounts deeply
 - inspect hardware beyond basic system info
@@ -574,7 +584,6 @@ The recommended next stage is still read-only.
 
 Add tools that make the assistant better at explaining the machine:
 
-- `packages.list`
 - `hardware.summary`
 - `power.status`
 - `disk.usage`

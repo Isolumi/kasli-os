@@ -25,6 +25,8 @@ Implemented tools:
 - `system.info`: returns OS and kernel identity evidence.
 - `packages.recent_changes`: reads bounded recent package activity from local
   DNF/DNF5/YUM history logs.
+- `packages.list`: lists bounded installed package inventory on RPM systems
+  through a fixed read-only query.
 - `journal.query`: returns bounded, redacted journal evidence for an explicit
   systemd unit selector.
 - `systemd.units.list`: lists bounded systemd unit state on Linux builds with
@@ -141,6 +143,7 @@ Then use the CLI from another terminal:
 ./build/kasli --socket build/kaslid.sock --tools-list
 ./build/kasli --socket build/kaslid.sock --call-tool system.info
 ./build/kasli --socket build/kaslid.sock --call-tool packages.recent_changes
+./build/kasli --socket build/kaslid.sock --call-tool packages.list
 ./build/kasli --socket build/kaslid.sock --call-tool journal.query --param unit=ssh.service
 ./build/kasli --socket build/kaslid.sock --call-tool services.failed
 ./build/kasli --socket build/kaslid.sock --call-tool services.enabled
@@ -246,6 +249,7 @@ In another terminal:
 ```sh
 ./build-linux/kasli --socket build-linux/kaslid.sock --tools-list
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool packages.recent_changes
+./build-linux/kasli --socket build-linux/kaslid.sock --call-tool packages.list
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool systemd.units.list
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool systemd.unit.status --param unit=ssh.service
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool services.failed
@@ -259,7 +263,7 @@ If your distro uses `sshd.service` instead of `ssh.service`, use that unit name.
 ## Current Limitations
 
 - No mutating actions are implemented.
-- No package mutation or installed-package inventory is implemented yet.
+- No package mutation is implemented yet.
 - No rollback integration is implemented yet.
 - No desktop UI is implemented yet.
 - Live systemd paths require Linux with `libsystemd`; macOS only exercises

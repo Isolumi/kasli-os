@@ -113,6 +113,7 @@ Expected tools:
 ```text
 system.info
 packages.recent_changes
+packages.list
 systemd.units.list
 systemd.unit.status
 services.failed
@@ -144,6 +145,18 @@ Expected:
 - Evidence body includes `package_changes_count=<n>`.
 - If readable logs exist but no changes are found, evidence includes
   `no_package_changes=true`.
+
+Read installed package inventory:
+
+```sh
+./build-fedora/kasli --socket build-fedora/kaslid.sock --call-tool packages.list
+```
+
+Expected:
+
+- JSON response with `"ok": true` when `rpm` is available.
+- Evidence body includes `packages_count=<n>`.
+- If there are more than 500 package rows, output includes `truncated=true`.
 
 List systemd units:
 
@@ -411,6 +424,7 @@ After testing, record:
 - Test count and result.
 - Which unit names worked.
 - Whether `packages.recent_changes` returned bounded package-change evidence.
+- Whether `packages.list` returned bounded installed-package evidence.
 - Whether `services.failed` returned a bounded failed-service summary.
 - Whether `services.enabled` returned a bounded enabled-service summary.
 - Whether `service.diagnose` returned aggregate and underlying evidence.
