@@ -13,6 +13,25 @@ The goal is to validate the Linux-only paths that macOS cannot exercise:
 Run the daemon as a normal user first. Avoid `sudo` unless you are specifically
 testing root behavior.
 
+## Codex Handoff
+
+If you want a Codex session running directly on the Fedora machine to test this
+prototype, start Codex from the repository root and give it this prompt:
+
+```text
+Test the Kasli read-only Linux prototype on this Fedora machine using
+docs/research/fedora-server-test.md. Build in build-fedora, run the full test
+suite, start kaslid as my normal user, exercise the CLI tools against live
+systemd and journal data, inspect the audit log, and report exact failures with
+commands and JSON responses. Do not add mutating tools, do not run arbitrary
+system-changing commands, and do not use sudo unless a documented test step
+explicitly requires it.
+```
+
+Before starting Codex on Fedora, make sure the Fedora checkout has the latest
+local source changes from the Mac. If you copied files manually instead of
+pulling from Git, re-sync the repo first.
+
 ## 1. Install Dependencies
 
 On Fedora Server:
@@ -72,7 +91,8 @@ In terminal 1 on Fedora:
   --audit-log build-fedora/audit.jsonl
 ```
 
-Leave this running.
+Leave this running. It is normal for this command to look like it is hanging:
+the daemon is waiting for CLI requests. Stop it with `Ctrl-C` when done.
 
 ## 5. Run CLI Smoke Tests
 
@@ -125,7 +145,7 @@ Expected:
 Find available service names:
 
 ```sh
-systemctl list-units --type=service | head -30
+systemctl list-units --type=service --all | head -40
 ```
 
 Common Fedora candidates:
@@ -180,6 +200,12 @@ Expected:
 If the response is an error or empty, check journal permissions and whether the
 unit has recent logs.
 
+To confirm that a unit has recent logs before asking Kasli:
+
+```sh
+journalctl -u systemd-journald.service -n 5 --no-pager
+```
+
 ## 9. Check Audit Logs
 
 ```sh
@@ -230,7 +256,59 @@ If you start `kaslid` with `sudo`, then a normal-user `kasli` call may fail
 because the socket rejects different UIDs. Prefer running both as the same
 normal user.
 
-## 12. Optional Ollama Test
+## 12. Troubleshooting Current Prototype Issues
+
+Do not split the value for `--call-tool` onto the next shell line unless the
+previous line ends with `\`. This is wrong:
+
+```sh
+./build-fedora/kasli --socket build-fedora/kaslid.sock --call-tool
+  system.info
+```
+
+Use one line:
+
+```sh
+./build-fedora/kasli --socket build-fedora/kaslid.sock --call-tool system.info
+```
+
+Or use a continued command:
+
+```sh
+./build-fedora/kasli \
+  --socket build-fedora/kaslid.sock \
+  --call-tool system.info
+```
+
+If `systemd.unit.status --param unit=sshd.service` fails, first verify that the
+unit exists on that Fedora system:
+
+```sh
+systemctl list-units --type=service --all | rg 'ssh|journal|NetworkManager|dbus'
+```
+
+Then query a unit that appears in the list, for example:
+
+```sh
+./build-fedora/kasli \
+  --socket build-fedora/kaslid.sock \
+  --call-tool systemd.unit.status \
+  --param unit=systemd-journald.service
+```
+
+If `journal.query` returns `"ok": true` with an empty evidence body, the tool
+worked but found no readable matching entries for that unit. Try a unit that
+`journalctl -u <unit> -n 5 --no-pager` shows entries for.
+
+If the daemon repeatedly prints `accept failed: Resource temporarily unavailable`,
+rebuild from the latest source. The listening socket should not use a receive
+timeout.
+
+If `systemd.units.list` returns `failed to finish reading systemd unit list`,
+rebuild from the latest source. The tool must drain the full D-Bus array even
+when it only stores the first 200 units.
+
+## 13. Optional Ollama Test
 
 If Ollama is installed on the Fedora server:
 
@@ -255,7 +333,7 @@ Expected:
 If Ollama is unavailable, the CLI returns a JSON error and the audit log records
 `model.error`.
 
-## 13. Record Results
+## 14. Record Results
 
 After testing, record:
 
@@ -266,4 +344,3 @@ After testing, record:
 - Which unit names worked.
 - Whether journal access required `systemd-journal` group membership.
 - Any failed commands and exact JSON responses.
-

@@ -201,6 +201,10 @@ Later hardware test:
 For Linux systemd testing, install a compiler, CMake, `pkg-config`, and
 `libsystemd` development headers, then rebuild from scratch.
 
+A fuller Fedora checklist, including a Codex handoff prompt for testing on the
+Fedora machine itself, is in
+[`docs/research/fedora-server-test.md`](docs/research/fedora-server-test.md).
+
 Examples:
 
 ```sh
