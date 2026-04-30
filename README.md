@@ -25,6 +25,8 @@ Implemented tools:
 - `system.info`: returns OS and kernel identity evidence.
 - `disk.usage`: lists bounded mounted filesystem usage from Linux mount
   information and filesystem space data.
+- `hardware.summary`: lists bounded CPU, memory, safe DMI, and GPU device
+  summary evidence from local kernel interfaces.
 - `network.summary`: lists bounded local network interface state, addresses,
   byte counters, and default-route flags from Linux sysfs and route data.
 - `packages.recent_changes`: reads bounded recent package activity from local
@@ -147,6 +149,7 @@ Then use the CLI from another terminal:
 ./build/kasli --socket build/kaslid.sock --tools-list
 ./build/kasli --socket build/kaslid.sock --call-tool system.info
 ./build/kasli --socket build/kaslid.sock --call-tool disk.usage
+./build/kasli --socket build/kaslid.sock --call-tool hardware.summary
 ./build/kasli --socket build/kaslid.sock --call-tool network.summary
 ./build/kasli --socket build/kaslid.sock --call-tool packages.recent_changes
 ./build/kasli --socket build/kaslid.sock --call-tool packages.list
@@ -255,6 +258,7 @@ In another terminal:
 ```sh
 ./build-linux/kasli --socket build-linux/kaslid.sock --tools-list
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool disk.usage
+./build-linux/kasli --socket build-linux/kaslid.sock --call-tool hardware.summary
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool network.summary
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool packages.recent_changes
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool packages.list

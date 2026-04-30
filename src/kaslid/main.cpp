@@ -7,6 +7,7 @@
 #include <kasli/policy/policy_broker.hpp>
 #include <kasli/session/session_service.hpp>
 #include <kasli/tools/disk_tool.hpp>
+#include <kasli/tools/hardware_tool.hpp>
 #include <kasli/tools/journal_tool.hpp>
 #include <kasli/tools/network_tool.hpp>
 #include <kasli/tools/package_tool.hpp>
@@ -171,6 +172,7 @@ int main(int argc, char** argv) {
     kasli::tools::ToolRegistry registry;
     registry.add(std::make_unique<kasli::tools::SystemInfoTool>());
     registry.add(std::make_unique<kasli::tools::DiskUsageTool>());
+    registry.add(std::make_unique<kasli::tools::HardwareSummaryTool>());
     registry.add(std::make_unique<kasli::tools::NetworkSummaryTool>());
     registry.add(std::make_unique<kasli::tools::PackageRecentChangesTool>());
     registry.add(std::make_unique<kasli::tools::PackageListTool>());

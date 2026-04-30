@@ -31,6 +31,7 @@ Current registered tools:
 
 - `system.info`
 - `disk.usage`
+- `hardware.summary`
 - `network.summary`
 - `packages.recent_changes`
 - `packages.list`
@@ -64,6 +65,23 @@ Current behavior:
 - returns `no_disk_mounts=true` when no usable mount rows are found
 - stores at most 100 mounted filesystem rows
 - marks `truncated=true` when more rows exist
+
+Verified on Fedora Linux 43.
+
+### `hardware.summary`
+
+Lists bounded local hardware identity and capacity evidence.
+
+Current behavior:
+
+- reads architecture with `uname`
+- reads CPU model, vendor, logical processor count, and physical core count
+  from `/proc/cpuinfo`
+- reads memory and swap totals from `/proc/meminfo`
+- reads safe DMI identity fields from `/sys/class/dmi/id`
+- avoids serial numbers, product UUIDs, and asset tags
+- lists at most 16 DRM GPU device rows from `/sys/class/drm/card*/device`
+- marks `truncated=true` when more GPU rows exist
 
 Verified on Fedora Linux 43.
 
@@ -210,17 +228,17 @@ Previous local macOS checkout before `services.failed`:
 The macOS checkout should be retested after pulling the `services.failed`
 commit.
 
-Fedora Linux 43 KDE checkout after `network.summary`:
+Fedora Linux 43 KDE checkout after `hardware.summary`:
 
 ```text
-116/116 tests passed
+124/124 tests passed
 ```
 
 Fresh daemon/CLI checks passed on Fedora Linux 43 for `system.info`,
 `systemd.units.list`, `systemd.unit.status`, `journal.query`,
 `services.failed`, `services.enabled`, `packages.recent_changes`,
-`packages.list`, `disk.usage`, `network.summary`, `service.diagnose`, and audit
-log metadata.
+`packages.list`, `disk.usage`, `hardware.summary`, `network.summary`,
+`service.diagnose`, and audit log metadata.
 
 ## How To Verify Locally
 
@@ -244,6 +262,7 @@ In another terminal:
 ./build/kasli --socket build/kaslid.sock --tools-list
 ./build/kasli --socket build/kaslid.sock --call-tool system.info
 ./build/kasli --socket build/kaslid.sock --call-tool disk.usage
+./build/kasli --socket build/kaslid.sock --call-tool hardware.summary
 ./build/kasli --socket build/kaslid.sock --call-tool network.summary
 ./build/kasli --socket build/kaslid.sock --call-tool packages.recent_changes
 ./build/kasli --socket build/kaslid.sock --call-tool packages.list
@@ -276,7 +295,7 @@ Kasli still cannot:
 - restart, enable, or disable services
 - edit config files
 - create or restore rollback snapshots
-- inspect detailed hardware, battery, GPU, or user state
+- inspect battery, user, or detailed security state
 - select tools automatically for arbitrary questions
 - perform privileged admin actions
 - provide a desktop UI
@@ -288,7 +307,6 @@ These are intentional limits until the read-only evidence layer is reliable.
 
 Near-term read-only tools:
 
-- `hardware.summary`
 - `power.status`
 
 Next architecture step:

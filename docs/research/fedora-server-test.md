@@ -113,6 +113,7 @@ Expected tools:
 ```text
 system.info
 disk.usage
+hardware.summary
 network.summary
 packages.recent_changes
 packages.list
@@ -146,6 +147,20 @@ Expected:
 - JSON response with `"ok": true`.
 - Evidence body includes `disk_mounts_count=<n>`.
 - Root or other persistent mounted filesystems appear when measurable.
+
+Read hardware summary:
+
+```sh
+./build-fedora/kasli --socket build-fedora/kaslid.sock --call-tool hardware.summary
+```
+
+Expected:
+
+- JSON response with `"ok": true`.
+- Evidence body includes `hardware_summary=1`.
+- Evidence body includes CPU, memory, safe DMI, and GPU count fields when those
+  interfaces are available.
+- Evidence does not include serial numbers, product UUIDs, or asset tags.
 
 Read network summary:
 
@@ -451,6 +466,8 @@ After testing, record:
 - Test count and result.
 - Which unit names worked.
 - Whether `disk.usage` returned bounded mounted-filesystem evidence.
+- Whether `hardware.summary` returned bounded CPU, memory, DMI, and GPU summary
+  evidence.
 - Whether `network.summary` returned bounded local interface evidence.
 - Whether `packages.recent_changes` returned bounded package-change evidence.
 - Whether `packages.list` returned bounded installed-package evidence.
