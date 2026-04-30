@@ -6,6 +6,7 @@
 #include <kasli/model/ollama_provider.hpp>
 #include <kasli/policy/policy_broker.hpp>
 #include <kasli/session/session_service.hpp>
+#include <kasli/tools/disk_tool.hpp>
 #include <kasli/tools/journal_tool.hpp>
 #include <kasli/tools/package_tool.hpp>
 #include <kasli/tools/service_diagnose_tool.hpp>
@@ -168,6 +169,7 @@ int main(int argc, char** argv) {
   try {
     kasli::tools::ToolRegistry registry;
     registry.add(std::make_unique<kasli::tools::SystemInfoTool>());
+    registry.add(std::make_unique<kasli::tools::DiskUsageTool>());
     registry.add(std::make_unique<kasli::tools::PackageRecentChangesTool>());
     registry.add(std::make_unique<kasli::tools::PackageListTool>());
     registry.add(std::make_unique<kasli::tools::SystemdUnitsTool>());

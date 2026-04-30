@@ -30,6 +30,7 @@ The current prototype proves these pieces:
 Current registered tools:
 
 - `system.info`
+- `disk.usage`
 - `packages.recent_changes`
 - `packages.list`
 - `systemd.units.list`
@@ -47,6 +48,23 @@ Verified on:
 
 - macOS, with `os_release=unavailable` expected
 - Fedora Linux 43 KDE, with live `/etc/os-release` and kernel evidence
+
+### `disk.usage`
+
+Lists bounded mounted filesystem usage on Linux.
+
+Current behavior:
+
+- reads `/proc/self/mountinfo`
+- filters obvious virtual filesystems such as `proc`, `sysfs`, `tmpfs`, and
+  cgroup mounts
+- measures candidate mounts with `std::filesystem::space()`
+- returns `disk_mounts_count=<n>`
+- returns `no_disk_mounts=true` when no usable mount rows are found
+- stores at most 100 mounted filesystem rows
+- marks `truncated=true` when more rows exist
+
+Verified on Fedora Linux 43.
 
 ### `packages.recent_changes`
 
@@ -178,7 +196,7 @@ commit.
 Fedora Linux 43 KDE checkout after `packages.list`:
 
 ```text
-99/99 tests passed
+108/108 tests passed
 ```
 
 Fresh daemon/CLI checks passed on Fedora Linux 43 for `system.info`,
@@ -207,6 +225,7 @@ In another terminal:
 ```sh
 ./build/kasli --socket build/kaslid.sock --tools-list
 ./build/kasli --socket build/kaslid.sock --call-tool system.info
+./build/kasli --socket build/kaslid.sock --call-tool disk.usage
 ./build/kasli --socket build/kaslid.sock --call-tool packages.recent_changes
 ./build/kasli --socket build/kaslid.sock --call-tool packages.list
 ./build/kasli --socket build/kaslid.sock --call-tool services.failed
@@ -238,7 +257,7 @@ Kasli still cannot:
 - restart, enable, or disable services
 - edit config files
 - create or restore rollback snapshots
-- inspect detailed hardware, battery, GPU, disk, network, or user state
+- inspect detailed hardware, battery, GPU, network, or user state
 - select tools automatically for arbitrary questions
 - perform privileged admin actions
 - provide a desktop UI
@@ -251,7 +270,6 @@ These are intentional limits until the read-only evidence layer is reliable.
 Near-term read-only tools:
 
 - `hardware.summary`
-- `disk.usage`
 - `network.summary`
 - `power.status`
 

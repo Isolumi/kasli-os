@@ -89,9 +89,10 @@ kaslid daemon
   |     allows only trusted read-only tools in the current prototype
   |
   +-- typed tool registry
-  |     owns system.info, packages.recent_changes, packages.list,
-  |     journal.query, systemd.units.list, systemd.unit.status,
-  |     services.failed, services.enabled, service.diagnose
+  |     owns system.info, disk.usage, packages.recent_changes,
+  |     packages.list, journal.query, systemd.units.list,
+  |     systemd.unit.status, services.failed, services.enabled,
+  |     service.diagnose
   |
   +-- audit log
   |     append-only JSONL event stream
@@ -131,6 +132,7 @@ It currently supports:
 ```sh
 ./build/kasli --socket build/kaslid.sock --tools-list
 ./build/kasli --socket build/kaslid.sock --call-tool system.info
+./build/kasli --socket build/kaslid.sock --call-tool disk.usage
 ./build/kasli --socket build/kaslid.sock --call-tool packages.recent_changes
 ./build/kasli --socket build/kaslid.sock --call-tool packages.list
 ./build/kasli --socket build/kaslid.sock --call-tool journal.query --param unit=ssh.service
@@ -172,6 +174,16 @@ The current implementation parses package install, upgrade, downgrade, remove,
 and reinstall rows, ignores DNF5 RPM callback stop/scriptlet noise, caps output
 at 100 recent rows, and marks truncated output. It is read-only log evidence,
 not package mutation.
+
+### `disk.usage`
+
+Lists bounded mounted filesystem usage on Linux.
+
+The production backend reads `/proc/self/mountinfo`, filters obvious virtual
+filesystems, and measures candidate mounts with `std::filesystem::space()`. It
+returns up to 100 mounted filesystem rows as bounded evidence. This gives the
+assistant a read-only way to answer basic disk-capacity and free-space
+questions without shell access.
 
 ### `packages.list`
 
@@ -445,6 +457,7 @@ The current test suite covers:
 - non-systemd unavailable behavior
 - systemd status evidence formatting
 - bounded systemd unit-list formatting
+- mountinfo parsing and bounded disk usage evidence
 - package history log parsing and bounded package-change evidence
 - fixed RPM package inventory parsing and bounded package-list evidence
 - enabled service unit-file listing and bounded evidence
@@ -466,7 +479,7 @@ ctest --test-dir build --output-on-failure
 Expected current result:
 
 ```text
-99/99 tests passed
+108/108 tests passed
 ```
 
 ## Supported Test Devices
@@ -549,6 +562,7 @@ The following paths should be validated on a Linux VM or Linux machine:
 - `systemd.unit.status --param unit=<unit>`
 - `services.failed`
 - `services.enabled`
+- `disk.usage`
 - `packages.recent_changes`
 - `service.diagnose --param unit=<unit>`
 - live `journal.query --param unit=<unit>`
@@ -586,7 +600,6 @@ Add tools that make the assistant better at explaining the machine:
 
 - `hardware.summary`
 - `power.status`
-- `disk.usage`
 - `network.summary`
 - `users.summary`
 - `security.baseline`

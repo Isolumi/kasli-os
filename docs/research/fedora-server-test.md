@@ -112,6 +112,7 @@ Expected tools:
 
 ```text
 system.info
+disk.usage
 packages.recent_changes
 packages.list
 systemd.units.list
@@ -132,6 +133,18 @@ Expected:
 
 - JSON response with `"ok": true`.
 - Evidence includes Fedora/Linux OS and kernel details.
+
+Read disk usage:
+
+```sh
+./build-fedora/kasli --socket build-fedora/kaslid.sock --call-tool disk.usage
+```
+
+Expected:
+
+- JSON response with `"ok": true`.
+- Evidence body includes `disk_mounts_count=<n>`.
+- Root or other persistent mounted filesystems appear when measurable.
 
 Read recent package changes:
 
@@ -423,6 +436,7 @@ After testing, record:
 - Whether CMake found `libsystemd`.
 - Test count and result.
 - Which unit names worked.
+- Whether `disk.usage` returned bounded mounted-filesystem evidence.
 - Whether `packages.recent_changes` returned bounded package-change evidence.
 - Whether `packages.list` returned bounded installed-package evidence.
 - Whether `services.failed` returned a bounded failed-service summary.
