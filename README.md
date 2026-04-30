@@ -30,6 +30,8 @@ Implemented tools:
 - `systemd.unit.status`: reads bounded systemd unit status on Linux builds with
   `libsystemd`; for `.service` units it includes service failure fields such as
   `Result`, `ExecMainCode`, and `ExecMainStatus`.
+- `services.failed`: lists bounded failed systemd `.service` units on Linux
+  builds with `libsystemd`.
 - `service.diagnose`: aggregates `systemd.unit.status` and `journal.query` for
   one unit, returning a compact read-only diagnosis evidence record plus the
   underlying status and journal evidence.
@@ -135,6 +137,7 @@ Then use the CLI from another terminal:
 ./build/kasli --socket build/kaslid.sock --tools-list
 ./build/kasli --socket build/kaslid.sock --call-tool system.info
 ./build/kasli --socket build/kaslid.sock --call-tool journal.query --param unit=ssh.service
+./build/kasli --socket build/kaslid.sock --call-tool services.failed
 ./build/kasli --socket build/kaslid.sock --call-tool service.diagnose --param unit=ssh.service
 ```
 
@@ -194,7 +197,7 @@ Best next test device:
 
 - Linux VM with systemd. Fedora, Ubuntu, Debian, openSUSE, or NixOS are all
   reasonable. This is the safest place to validate live `systemd.units.list`,
-  `systemd.unit.status`, and `journal.query`.
+  `systemd.unit.status`, `services.failed`, and `journal.query`.
 
 Later hardware test:
 
@@ -237,6 +240,7 @@ In another terminal:
 ./build-linux/kasli --socket build-linux/kaslid.sock --tools-list
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool systemd.units.list
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool systemd.unit.status --param unit=ssh.service
+./build-linux/kasli --socket build-linux/kaslid.sock --call-tool services.failed
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool journal.query --param unit=ssh.service
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool service.diagnose --param unit=ssh.service
 ```

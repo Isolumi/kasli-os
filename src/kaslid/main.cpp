@@ -169,6 +169,7 @@ int main(int argc, char** argv) {
     registry.add(std::make_unique<kasli::tools::SystemInfoTool>());
     registry.add(std::make_unique<kasli::tools::SystemdUnitsTool>());
     registry.add(std::make_unique<kasli::tools::SystemdUnitStatusTool>());
+    registry.add(std::make_unique<kasli::tools::FailedServicesTool>());
 #if KASLI_HAS_SYSTEMD
     registry.add(std::make_unique<kasli::tools::LiveJournalTool>());
 #else

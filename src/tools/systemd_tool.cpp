@@ -16,6 +16,7 @@ namespace kasli::tools {
 namespace {
 
 constexpr std::size_t kMaxUnits = 200;
+constexpr std::size_t kMaxFailedServices = 100;
 constexpr std::size_t kMaxBodyBytes = 64 * 1024;
 
 void append_bounded(std::string& body, const std::string& text, bool& truncated) {
@@ -62,6 +63,12 @@ std::string value_or_empty(const char* value) {
 }
 
 std::string format_unit_row(const detail::SystemdUnitListRow& row) {
+  return row.unit + " load=" + row.load_state + " active=" + row.active_state +
+         " sub=" + row.sub_state + " description=" + core::redact_likely_secret(row.description) +
+         '\n';
+}
+
+std::string format_failed_service_row(const detail::FailedServiceRow& row) {
   return row.unit + " load=" + row.load_state + " active=" + row.active_state +
          " sub=" + row.sub_state + " description=" + core::redact_likely_secret(row.description) +
          '\n';
@@ -151,6 +158,26 @@ std::string format_systemd_units_list_body(const std::vector<SystemdUnitListRow>
   return body;
 }
 
+std::string format_failed_services_body(const std::vector<FailedServiceRow>& rows,
+                                        bool has_more_rows) {
+  std::string body;
+  bool truncated = false;
+  append_bounded(body, "failed_services_count=" + std::to_string(rows.size()) + '\n', truncated);
+  if (rows.empty()) {
+    append_bounded(body, "no_failed_services=true\n", truncated);
+  }
+  for (const auto& row : rows) {
+    append_bounded(body, format_failed_service_row(row), truncated);
+    if (truncated) {
+      return body;
+    }
+  }
+  if (has_more_rows) {
+    append_bounded(body, "truncated=true\n", truncated);
+  }
+  return body;
+}
+
 std::string format_systemd_unit_status_body(const SystemdUnitStatusEvidence& evidence) {
   std::string body;
   bool truncated = false;
@@ -186,6 +213,154 @@ std::string format_systemd_unit_status_body(const SystemdUnitStatusEvidence& evi
 }
 
 }  // namespace detail
+
+std::string FailedServicesTool::name() const {
+  return "services.failed";
+}
+
+core::RiskClass FailedServicesTool::risk() const {
+  return core::RiskClass::ReadOnly;
+}
+
+core::ToolResponse FailedServicesTool::call(const core::ToolRequest& request) const {
+#if KASLI_HAS_SYSTEMD
+  BusHandle bus;
+  int result = sd_bus_open_system(&bus.bus);
+  if (result < 0) {
+    return core::ToolResponse{
+        .request_id = request.id,
+        .status = core::ToolStatus::Error,
+        .message = "failed to connect to systemd system bus",
+        .evidence = {},
+    };
+  }
+
+  sd_bus_error error = SD_BUS_ERROR_NULL;
+  MessageHandle reply;
+  result = sd_bus_call_method(bus.bus,
+                              "org.freedesktop.systemd1",
+                              "/org/freedesktop/systemd1",
+                              "org.freedesktop.systemd1.Manager",
+                              "ListUnits",
+                              &error,
+                              &reply.message,
+                              "");
+  sd_bus_error_free(&error);
+  if (result < 0) {
+    return core::ToolResponse{
+        .request_id = request.id,
+        .status = core::ToolStatus::Error,
+        .message = "failed to list systemd units",
+        .evidence = {},
+    };
+  }
+
+  result = sd_bus_message_enter_container(reply.message, SD_BUS_TYPE_ARRAY, "(ssssssouso)");
+  if (result < 0) {
+    return core::ToolResponse{
+        .request_id = request.id,
+        .status = core::ToolStatus::Error,
+        .message = "failed to read systemd unit list",
+        .evidence = {},
+    };
+  }
+
+  std::vector<detail::FailedServiceRow> rows;
+  bool has_more_rows = false;
+
+  while ((result = sd_bus_message_enter_container(reply.message, SD_BUS_TYPE_STRUCT, "ssssssouso")) >
+         0) {
+    const char* unit = "";
+    const char* description = "";
+    const char* load_state = "";
+    const char* active_state = "";
+    const char* sub_state = "";
+    const char* following = "";
+    const char* object_path = "";
+    std::uint32_t job_id = 0;
+    const char* job_type = "";
+    const char* job_path = "";
+
+    result = sd_bus_message_read(reply.message,
+                                 "ssssssouso",
+                                 &unit,
+                                 &description,
+                                 &load_state,
+                                 &active_state,
+                                 &sub_state,
+                                 &following,
+                                 &object_path,
+                                 &job_id,
+                                 &job_type,
+                                 &job_path);
+    if (result < 0) {
+      return core::ToolResponse{
+          .request_id = request.id,
+          .status = core::ToolStatus::Error,
+          .message = "failed to read systemd unit entry",
+          .evidence = {},
+      };
+    }
+    sd_bus_message_exit_container(reply.message);
+
+    const std::string unit_value = value_or_empty(unit);
+    const std::string active_value = value_or_empty(active_state);
+    if (unit_value.ends_with(".service") && active_value == "failed") {
+      if (rows.size() < kMaxFailedServices) {
+        rows.push_back(detail::FailedServiceRow{
+            .unit = unit_value,
+            .load_state = value_or_empty(load_state),
+            .active_state = active_value,
+            .sub_state = value_or_empty(sub_state),
+            .description = value_or_empty(description),
+        });
+      } else {
+        has_more_rows = true;
+      }
+    }
+
+    (void)following;
+    (void)object_path;
+    (void)job_id;
+    (void)job_type;
+    (void)job_path;
+  }
+
+  if (result < 0) {
+    return core::ToolResponse{
+        .request_id = request.id,
+        .status = core::ToolStatus::Error,
+        .message = "failed to read systemd unit list",
+        .evidence = {},
+    };
+  }
+
+  result = sd_bus_message_exit_container(reply.message);
+  if (result < 0) {
+    return core::ToolResponse{
+        .request_id = request.id,
+        .status = core::ToolStatus::Error,
+        .message = "failed to finish reading systemd unit list",
+        .evidence = {},
+    };
+  }
+
+  return core::ToolResponse{
+      .request_id = request.id,
+      .status = core::ToolStatus::Ok,
+      .message = "failed services listed",
+      .evidence = {core::Evidence{
+          .id = request.id + ":services.failed",
+          .source = "services.failed",
+          .summary = "bounded failed service list",
+          .body = detail::format_failed_services_body(rows, has_more_rows),
+          .timestamp = core::utc_timestamp(),
+      }},
+  };
+#else
+  return unavailable_response(request);
+#endif
+}
 
 std::string SystemdUnitsTool::name() const {
   return "systemd.units.list";

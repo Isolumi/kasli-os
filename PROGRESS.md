@@ -32,6 +32,7 @@ Current registered tools:
 - `system.info`
 - `systemd.units.list`
 - `systemd.unit.status`
+- `services.failed`
 - `journal.query`
 - `service.diagnose`
 
@@ -69,6 +70,21 @@ For `.service` units it includes:
 
 Verified on Fedora Linux 43 with `systemd-journald.service`.
 
+### `services.failed`
+
+Lists failed systemd `.service` units on Linux builds with `libsystemd`.
+
+Current behavior:
+
+- returns `failed_services_count=<n>`
+- returns `no_failed_services=true` when no failed services are found
+- stores at most 100 failed service rows
+- marks `truncated=true` when more failed services exist
+- drains the full D-Bus array so large hosts do not fail while closing the
+  response
+
+Verified on Fedora Linux 43.
+
 ### `journal.query`
 
 Reads bounded journal entries for an explicit unit selector.
@@ -99,20 +115,24 @@ typed OS evidence instead of shell access.
 
 ## Verified Test Results
 
-Local macOS checkout:
+Previous local macOS checkout before `services.failed`:
 
 ```text
 74/74 tests passed
 ```
 
-Fedora Linux 43 KDE checkout before `service.diagnose`:
+The macOS checkout should be retested after pulling the `services.failed`
+commit.
+
+Fedora Linux 43 KDE checkout after `service.diagnose` and `services.failed`:
 
 ```text
-69/69 tests passed
+79/79 tests passed
 ```
 
-The Fedora machine should be retested after pulling the `service.diagnose`
-commit.
+Fresh daemon/CLI checks passed on Fedora Linux 43 for `system.info`,
+`systemd.units.list`, `systemd.unit.status`, `journal.query`,
+`services.failed`, `service.diagnose`, and audit log metadata.
 
 ## How To Verify Locally
 
@@ -135,6 +155,7 @@ In another terminal:
 ```sh
 ./build/kasli --socket build/kaslid.sock --tools-list
 ./build/kasli --socket build/kaslid.sock --call-tool system.info
+./build/kasli --socket build/kaslid.sock --call-tool services.failed
 ./build/kasli --socket build/kaslid.sock --call-tool service.diagnose --param unit=ssh.service
 tail -n 20 build/dev-audit.jsonl
 ```
@@ -174,8 +195,8 @@ These are intentional limits until the read-only evidence layer is reliable.
 
 Near-term read-only tools:
 
-- `services.failed`
 - `packages.recent_changes`
+- `services.enabled`
 - `hardware.summary`
 - `disk.usage`
 - `network.summary`

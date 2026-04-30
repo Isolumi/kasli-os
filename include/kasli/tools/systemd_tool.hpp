@@ -17,6 +17,14 @@ struct SystemdUnitListRow {
   std::string description;
 };
 
+struct FailedServiceRow {
+  std::string unit;
+  std::string load_state;
+  std::string active_state;
+  std::string sub_state;
+  std::string description;
+};
+
 struct SystemdUnitStatusEvidence {
   std::string unit;
   std::string id;
@@ -34,9 +42,18 @@ struct SystemdUnitStatusEvidence {
 
 std::string format_systemd_units_list_body(const std::vector<SystemdUnitListRow>& rows,
                                            bool has_more_rows);
+std::string format_failed_services_body(const std::vector<FailedServiceRow>& rows,
+                                        bool has_more_rows);
 std::string format_systemd_unit_status_body(const SystemdUnitStatusEvidence& evidence);
 
 }  // namespace detail
+
+class FailedServicesTool final : public Tool {
+ public:
+  std::string name() const override;
+  core::RiskClass risk() const override;
+  core::ToolResponse call(const core::ToolRequest& request) const override;
+};
 
 class SystemdUnitsTool final : public Tool {
  public:

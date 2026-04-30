@@ -90,7 +90,7 @@ kaslid daemon
   |
   +-- typed tool registry
   |     owns system.info, journal.query, systemd.units.list,
-  |     systemd.unit.status, service.diagnose
+  |     systemd.unit.status, services.failed, service.diagnose
   |
   +-- audit log
   |     append-only JSONL event stream
@@ -131,6 +131,7 @@ It currently supports:
 ./build/kasli --socket build/kaslid.sock --tools-list
 ./build/kasli --socket build/kaslid.sock --call-tool system.info
 ./build/kasli --socket build/kaslid.sock --call-tool journal.query --param unit=ssh.service
+./build/kasli --socket build/kaslid.sock --call-tool services.failed
 ./build/kasli --socket build/kaslid.sock --call-tool service.diagnose --param unit=ssh.service
 ./build/kasli --socket build/kaslid.sock --ask "What OS is this?" --ask-tool system.info
 ```
@@ -184,6 +185,16 @@ For `.service` units, it includes service failure evidence when available:
 - `ExecMainStatus`
 
 Those fields are important for questions like "why did this service fail?"
+
+### `services.failed`
+
+Lists bounded failed systemd `.service` units on Linux builds with
+`libsystemd`.
+
+It returns a compact evidence body with `failed_services_count=<n>` and one row
+per failed service up to the configured cap. When there are no failed services,
+it returns `no_failed_services=true`. This gives the assistant a read-only way
+to find candidate units before calling `service.diagnose`.
 
 ### `service.diagnose`
 
@@ -420,7 +431,7 @@ ctest --test-dir build --output-on-failure
 Expected current result:
 
 ```text
-74/74 tests passed
+79/79 tests passed
 ```
 
 ## Supported Test Devices
@@ -450,6 +461,7 @@ Good for:
 
 - live `systemd.units.list`
 - live `systemd.unit.status`
+- live `services.failed`
 - live `journal.query`
 - journal permission behavior
 - packaging assumptions
@@ -484,8 +496,9 @@ That is expected.
 
 That is expected.
 
-`systemd.units.list` and `systemd.unit.status` are visible in the tool registry,
-but live systemd support is not built because macOS does not have systemd.
+`systemd.units.list`, `systemd.unit.status`, and `services.failed` are visible
+in the tool registry, but live systemd support is not built because macOS does
+not have systemd.
 
 That is expected.
 
@@ -497,6 +510,7 @@ The following paths should be validated on a Linux VM or Linux machine:
 - live systemd D-Bus connection
 - `systemd.units.list`
 - `systemd.unit.status --param unit=<unit>`
+- `services.failed`
 - `service.diagnose --param unit=<unit>`
 - live `journal.query --param unit=<unit>`
 - journal permission behavior for normal users
@@ -531,10 +545,9 @@ The recommended next stage is still read-only.
 
 Add tools that make the assistant better at explaining the machine:
 
-- `packages.list`
 - `packages.recent_changes`
-- `services.failed`
 - `services.enabled`
+- `packages.list`
 - `hardware.summary`
 - `power.status`
 - `disk.usage`

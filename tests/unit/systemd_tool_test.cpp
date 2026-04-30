@@ -19,6 +19,85 @@ TEST_CASE("systemd units tool reports unavailable when systemd is not built") {
 #endif
 }
 
+TEST_CASE("failed services tool metadata is read-only") {
+  kasli::tools::FailedServicesTool tool;
+
+  REQUIRE(tool.name() == "services.failed");
+  REQUIRE(tool.risk() == kasli::core::RiskClass::ReadOnly);
+}
+
+TEST_CASE("failed services body lists bounded failed service rows") {
+  const auto body = kasli::tools::detail::format_failed_services_body(
+      std::vector<kasli::tools::detail::FailedServiceRow>{
+          {
+              .unit = "sshd.service",
+              .load_state = "loaded",
+              .active_state = "failed",
+              .sub_state = "failed",
+              .description = "OpenSSH server daemon",
+          },
+          {
+              .unit = "postgresql.service",
+              .load_state = "loaded",
+              .active_state = "failed",
+              .sub_state = "failed",
+              .description = "PostgreSQL database server",
+          },
+      },
+      true);
+
+  REQUIRE(body.find("failed_services_count=2") != std::string::npos);
+  REQUIRE(body.find("sshd.service load=loaded active=failed sub=failed") != std::string::npos);
+  REQUIRE(body.find("postgresql.service load=loaded active=failed sub=failed") !=
+          std::string::npos);
+  REQUIRE(body.find("truncated=true") != std::string::npos);
+  REQUIRE(body.find("no_failed_services=true") == std::string::npos);
+}
+
+TEST_CASE("failed services body reports when no failed services are found") {
+  const auto body = kasli::tools::detail::format_failed_services_body({}, false);
+
+  REQUIRE(body.find("failed_services_count=0") != std::string::npos);
+  REQUIRE(body.find("no_failed_services=true") != std::string::npos);
+  REQUIRE(body.find("truncated=true") == std::string::npos);
+}
+
+TEST_CASE("failed services tool reports unavailable when systemd is not built") {
+#if !KASLI_HAS_SYSTEMD
+  kasli::tools::FailedServicesTool tool;
+  auto response = tool.call(kasli::core::ToolRequest{
+      .id = "req-services-failed-unavailable",
+      .tool_name = "services.failed",
+      .risk = kasli::core::RiskClass::ReadOnly,
+  });
+
+  REQUIRE(response.status == kasli::core::ToolStatus::Error);
+  REQUIRE(response.message == "systemd support was not built");
+  REQUIRE(response.evidence.empty());
+#endif
+}
+
+TEST_CASE("failed services tool succeeds against a live system bus") {
+#if KASLI_HAS_SYSTEMD
+  kasli::tools::FailedServicesTool tool;
+  auto response = tool.call(kasli::core::ToolRequest{
+      .id = "req-services-failed-live",
+      .tool_name = "services.failed",
+      .risk = kasli::core::RiskClass::ReadOnly,
+  });
+
+  if (response.status == kasli::core::ToolStatus::Error &&
+      response.message == "failed to connect to systemd system bus") {
+    SKIP("systemd system bus is unavailable");
+  }
+
+  REQUIRE(response.status == kasli::core::ToolStatus::Ok);
+  REQUIRE(response.message == "failed services listed");
+  REQUIRE(response.evidence.size() == 1);
+  REQUIRE(response.evidence.front().source == "services.failed");
+#endif
+}
+
 TEST_CASE("systemd units list evidence is bounded and marks extra rows") {
   std::vector<kasli::tools::detail::SystemdUnitListRow> rows;
   rows.reserve(200);
