@@ -29,6 +29,8 @@ Implemented tools:
   summary evidence from local kernel interfaces.
 - `network.summary`: lists bounded local network interface state, addresses,
   byte counters, and default-route flags from Linux sysfs and route data.
+- `power.status`: lists bounded local power supply and battery status from
+  Linux power-supply sysfs data.
 - `packages.recent_changes`: reads bounded recent package activity from local
   DNF/DNF5/YUM history logs.
 - `packages.list`: lists bounded installed package inventory on RPM systems
@@ -151,6 +153,7 @@ Then use the CLI from another terminal:
 ./build/kasli --socket build/kaslid.sock --call-tool disk.usage
 ./build/kasli --socket build/kaslid.sock --call-tool hardware.summary
 ./build/kasli --socket build/kaslid.sock --call-tool network.summary
+./build/kasli --socket build/kaslid.sock --call-tool power.status
 ./build/kasli --socket build/kaslid.sock --call-tool packages.recent_changes
 ./build/kasli --socket build/kaslid.sock --call-tool packages.list
 ./build/kasli --socket build/kaslid.sock --call-tool journal.query --param unit=ssh.service
@@ -260,6 +263,7 @@ In another terminal:
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool disk.usage
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool hardware.summary
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool network.summary
+./build-linux/kasli --socket build-linux/kaslid.sock --call-tool power.status
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool packages.recent_changes
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool packages.list
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool systemd.units.list

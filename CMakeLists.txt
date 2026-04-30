@@ -30,6 +30,7 @@ add_library(kasli_core
   src/tools/journal_tool.cpp
   src/tools/network_tool.cpp
   src/tools/package_tool.cpp
+  src/tools/power_tool.cpp
   src/tools/service_diagnose_tool.cpp
   src/tools/systemd_tool.cpp
   src/tools/system_info_tool.cpp
@@ -130,6 +131,13 @@ catch_discover_tests(kasli_hardware_tool_test
 add_executable(kasli_network_tool_test tests/unit/network_tool_test.cpp)
 target_link_libraries(kasli_network_tool_test PRIVATE kasli_core Catch2::Catch2WithMain)
 catch_discover_tests(kasli_network_tool_test
+  TEST_PREFIX "tools."
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+add_executable(kasli_power_tool_test tests/unit/power_tool_test.cpp)
+target_link_libraries(kasli_power_tool_test PRIVATE kasli_core Catch2::Catch2WithMain)
+catch_discover_tests(kasli_power_tool_test
   TEST_PREFIX "tools."
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )

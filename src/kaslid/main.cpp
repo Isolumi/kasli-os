@@ -11,6 +11,7 @@
 #include <kasli/tools/journal_tool.hpp>
 #include <kasli/tools/network_tool.hpp>
 #include <kasli/tools/package_tool.hpp>
+#include <kasli/tools/power_tool.hpp>
 #include <kasli/tools/service_diagnose_tool.hpp>
 #include <kasli/tools/systemd_tool.hpp>
 #include <kasli/tools/system_info_tool.hpp>
@@ -174,6 +175,7 @@ int main(int argc, char** argv) {
     registry.add(std::make_unique<kasli::tools::DiskUsageTool>());
     registry.add(std::make_unique<kasli::tools::HardwareSummaryTool>());
     registry.add(std::make_unique<kasli::tools::NetworkSummaryTool>());
+    registry.add(std::make_unique<kasli::tools::PowerStatusTool>());
     registry.add(std::make_unique<kasli::tools::PackageRecentChangesTool>());
     registry.add(std::make_unique<kasli::tools::PackageListTool>());
     registry.add(std::make_unique<kasli::tools::SystemdUnitsTool>());

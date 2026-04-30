@@ -115,6 +115,7 @@ system.info
 disk.usage
 hardware.summary
 network.summary
+power.status
 packages.recent_changes
 packages.list
 systemd.units.list
@@ -174,6 +175,20 @@ Expected:
 - Evidence body includes `network_interfaces_count=<n>`.
 - Loopback and local network interfaces appear when exposed by `/sys/class/net`.
 - Interfaces that own a default route include `default_route=true`.
+
+Read power status:
+
+```sh
+./build-fedora/kasli --socket build-fedora/kaslid.sock --call-tool power.status
+```
+
+Expected:
+
+- JSON response with `"ok": true`.
+- Evidence body includes `power_supplies_count=<n>`.
+- Desktops or servers with no exposed power supplies include
+  `no_power_supplies=true`.
+- Evidence does not include battery serial numbers.
 
 Read recent package changes:
 
@@ -469,6 +484,7 @@ After testing, record:
 - Whether `hardware.summary` returned bounded CPU, memory, DMI, and GPU summary
   evidence.
 - Whether `network.summary` returned bounded local interface evidence.
+- Whether `power.status` returned bounded local power-supply evidence.
 - Whether `packages.recent_changes` returned bounded package-change evidence.
 - Whether `packages.list` returned bounded installed-package evidence.
 - Whether `services.failed` returned a bounded failed-service summary.

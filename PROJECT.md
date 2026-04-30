@@ -92,7 +92,8 @@ kaslid daemon
   |     owns system.info, disk.usage, packages.recent_changes,
   |     packages.list, journal.query, systemd.units.list,
   |     systemd.unit.status, services.failed, services.enabled,
-  |     hardware.summary, network.summary, service.diagnose
+  |     hardware.summary, network.summary, power.status,
+  |     service.diagnose
   |
   +-- audit log
   |     append-only JSONL event stream
@@ -205,6 +206,17 @@ from `getifaddrs`, marks default-route interfaces from `/proc/net/route`, and
 returns up to 100 interface rows as bounded evidence. This gives the assistant
 a read-only way to answer basic local connectivity and interface-state
 questions without shell access.
+
+### `power.status`
+
+Lists bounded local power supply and battery status.
+
+The production backend reads `/sys/class/power_supply`, fixed well-known
+attributes such as `type`, `status`, `online`, `capacity`, energy/charge fields,
+health, technology, manufacturer, and model, and returns up to 16 rows as
+bounded evidence. It avoids serial numbers and arbitrary deep sysfs traversal.
+This gives the assistant a read-only way to answer basic charging, AC adapter,
+and battery-status questions without shell access.
 
 ### `packages.list`
 
@@ -481,6 +493,7 @@ The current test suite covers:
 - mountinfo parsing and bounded disk usage evidence
 - local hardware parsing and bounded hardware summary evidence
 - local network interface parsing and bounded network summary evidence
+- local power supply parsing and bounded power status evidence
 - package history log parsing and bounded package-change evidence
 - fixed RPM package inventory parsing and bounded package-list evidence
 - enabled service unit-file listing and bounded evidence
@@ -502,7 +515,7 @@ ctest --test-dir build --output-on-failure
 Expected current result:
 
 ```text
-124/124 tests passed
+129/129 tests passed
 ```
 
 ## Supported Test Devices
@@ -588,6 +601,7 @@ The following paths should be validated on a Linux VM or Linux machine:
 - `disk.usage`
 - `hardware.summary`
 - `network.summary`
+- `power.status`
 - `packages.recent_changes`
 - `service.diagnose --param unit=<unit>`
 - live `journal.query --param unit=<unit>`
@@ -609,7 +623,7 @@ The project cannot currently:
 - restore rollback snapshots
 - inspect desktop application state
 - inspect user accounts deeply
-- inspect battery, user, or detailed security state
+- inspect user or detailed security state
 - answer arbitrary multi-tool diagnostic questions automatically
 
 The current `--ask` mode uses one selected evidence tool. `service.diagnose`
@@ -623,7 +637,6 @@ The recommended next stage is still read-only.
 
 Add tools that make the assistant better at explaining the machine:
 
-- `power.status`
 - `users.summary`
 - `security.baseline`
 
