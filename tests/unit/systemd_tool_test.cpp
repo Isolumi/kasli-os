@@ -40,6 +40,26 @@ TEST_CASE("systemd units list evidence is bounded and marks extra rows") {
   REQUIRE(body.find("truncated=true") != std::string::npos);
 }
 
+TEST_CASE("systemd units list succeeds against a live system bus") {
+#if KASLI_HAS_SYSTEMD
+  kasli::tools::SystemdUnitsTool tool;
+  auto response = tool.call(kasli::core::ToolRequest{
+      .id = "req-systemd-live-list",
+      .tool_name = "systemd.units.list",
+      .risk = kasli::core::RiskClass::ReadOnly,
+  });
+
+  if (response.status == kasli::core::ToolStatus::Error &&
+      response.message == "failed to connect to systemd system bus") {
+    SKIP("systemd system bus is unavailable");
+  }
+
+  REQUIRE(response.status == kasli::core::ToolStatus::Ok);
+  REQUIRE(response.message == "systemd units listed");
+  REQUIRE(response.evidence.size() == 1);
+#endif
+}
+
 TEST_CASE("systemd unit status tool metadata is read-only") {
   kasli::tools::SystemdUnitStatusTool tool;
 

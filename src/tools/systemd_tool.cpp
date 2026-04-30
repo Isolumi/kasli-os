@@ -276,18 +276,17 @@ core::ToolResponse SystemdUnitsTool::call(const core::ToolRequest& request) cons
     }
     sd_bus_message_exit_container(reply.message);
 
-    if (rows.size() >= kMaxUnits) {
+    if (rows.size() < kMaxUnits) {
+      rows.push_back(detail::SystemdUnitListRow{
+          .unit = value_or_empty(unit),
+          .load_state = value_or_empty(load_state),
+          .active_state = value_or_empty(active_state),
+          .sub_state = value_or_empty(sub_state),
+          .description = value_or_empty(description),
+      });
+    } else {
       has_more_rows = true;
-      break;
     }
-
-    rows.push_back(detail::SystemdUnitListRow{
-        .unit = value_or_empty(unit),
-        .load_state = value_or_empty(load_state),
-        .active_state = value_or_empty(active_state),
-        .sub_state = value_or_empty(sub_state),
-        .description = value_or_empty(description),
-    });
 
     (void)following;
     (void)object_path;
