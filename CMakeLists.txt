@@ -26,6 +26,7 @@ add_library(kasli_core
   src/policy/policy_broker.cpp
   src/session/session_service.cpp
   src/tools/journal_tool.cpp
+  src/tools/service_diagnose_tool.cpp
   src/tools/systemd_tool.cpp
   src/tools/system_info_tool.cpp
   src/tools/tool_registry.cpp
@@ -90,6 +91,13 @@ catch_discover_tests(kasli_system_info_tool_test
 add_executable(kasli_journal_tool_test tests/unit/journal_tool_test.cpp)
 target_link_libraries(kasli_journal_tool_test PRIVATE kasli_core Catch2::Catch2WithMain)
 catch_discover_tests(kasli_journal_tool_test
+  TEST_PREFIX "tools."
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+add_executable(kasli_service_diagnose_tool_test tests/unit/service_diagnose_tool_test.cpp)
+target_link_libraries(kasli_service_diagnose_tool_test PRIVATE kasli_core Catch2::Catch2WithMain)
+catch_discover_tests(kasli_service_diagnose_tool_test
   TEST_PREFIX "tools."
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )

@@ -115,6 +115,7 @@ system.info
 systemd.units.list
 systemd.unit.status
 journal.query
+service.diagnose
 ```
 
 Read basic OS info:
@@ -206,7 +207,31 @@ To confirm that a unit has recent logs before asking Kasli:
 journalctl -u systemd-journald.service -n 5 --no-pager
 ```
 
-## 9. Check Audit Logs
+## 9. Test Service Diagnosis
+
+```sh
+./build-fedora/kasli --socket build-fedora/kaslid.sock \
+  --call-tool service.diagnose \
+  --param unit=sshd.service
+```
+
+Expected:
+
+- JSON response with `"ok": true` if either status or journal evidence can be
+  collected.
+- First evidence source is `service.diagnose`.
+- Response also includes underlying `systemd.unit.status` and `journal.query`
+  evidence when those dependency calls succeed.
+- Diagnosis evidence includes fields such as:
+  - `status_tool_status=...`
+  - `journal_tool_status=...`
+  - `active_state=...`
+  - `journal_entries_present=...`
+  - `diagnosis=...`
+
+If `sshd.service` is not present, use a real unit from step 6.
+
+## 10. Check Audit Logs
 
 ```sh
 tail -n 20 build-fedora/audit.jsonl
@@ -221,7 +246,7 @@ Expected:
 - Evidence refs are recorded.
 - Full evidence bodies are not copied into audit metadata.
 
-## 10. Journal Permission Notes
+## 11. Journal Permission Notes
 
 Fedora may restrict system journal access for normal users.
 
@@ -247,7 +272,7 @@ cd ~/kasli_os
 
 Retry `journal.query`.
 
-## 11. Same-UID Socket Note
+## 12. Same-UID Socket Note
 
 The daemon checks peer credentials where supported. The CLI and daemon should
 run as the same user.
@@ -256,7 +281,7 @@ If you start `kaslid` with `sudo`, then a normal-user `kasli` call may fail
 because the socket rejects different UIDs. Prefer running both as the same
 normal user.
 
-## 12. Troubleshooting Current Prototype Issues
+## 13. Troubleshooting Current Prototype Issues
 
 Do not split the value for `--call-tool` onto the next shell line unless the
 previous line ends with `\`. This is wrong:
@@ -308,7 +333,7 @@ If `systemd.units.list` returns `failed to finish reading systemd unit list`,
 rebuild from the latest source. The tool must drain the full D-Bus array even
 when it only stores the first 200 units.
 
-## 13. Optional Ollama Test
+## 14. Optional Ollama Test
 
 If Ollama is installed on the Fedora server:
 
@@ -333,7 +358,7 @@ Expected:
 If Ollama is unavailable, the CLI returns a JSON error and the audit log records
 `model.error`.
 
-## 14. Record Results
+## 15. Record Results
 
 After testing, record:
 
@@ -342,5 +367,6 @@ After testing, record:
 - Whether CMake found `libsystemd`.
 - Test count and result.
 - Which unit names worked.
+- Whether `service.diagnose` returned aggregate and underlying evidence.
 - Whether journal access required `systemd-journal` group membership.
 - Any failed commands and exact JSON responses.

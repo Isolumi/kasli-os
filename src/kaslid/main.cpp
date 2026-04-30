@@ -7,6 +7,7 @@
 #include <kasli/policy/policy_broker.hpp>
 #include <kasli/session/session_service.hpp>
 #include <kasli/tools/journal_tool.hpp>
+#include <kasli/tools/service_diagnose_tool.hpp>
 #include <kasli/tools/systemd_tool.hpp>
 #include <kasli/tools/system_info_tool.hpp>
 #include <kasli/tools/tool_registry.hpp>
@@ -173,6 +174,12 @@ int main(int argc, char** argv) {
 #else
     registry.add(std::make_unique<kasli::tools::JournalFixtureTool>(journal_fixture_path()));
 #endif
+    const auto* status_tool = registry.find("systemd.unit.status");
+    const auto* journal_tool = registry.find("journal.query");
+    if (status_tool == nullptr || journal_tool == nullptr) {
+      throw std::runtime_error("service diagnosis dependencies are not registered");
+    }
+    registry.add(std::make_unique<kasli::tools::ServiceDiagnoseTool>(*status_tool, *journal_tool));
 
     kasli::policy::PolicyBroker policy(registry.policies());
     kasli::audit::AuditLog audit(options->audit_path);

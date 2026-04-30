@@ -30,6 +30,9 @@ Implemented tools:
 - `systemd.unit.status`: reads bounded systemd unit status on Linux builds with
   `libsystemd`; for `.service` units it includes service failure fields such as
   `Result`, `ExecMainCode`, and `ExecMainStatus`.
+- `service.diagnose`: aggregates `systemd.unit.status` and `journal.query` for
+  one unit, returning a compact read-only diagnosis evidence record plus the
+  underlying status and journal evidence.
 
 The prototype does not yet perform package changes, service changes, config
 edits, rollback operations, or privileged admin actions.
@@ -132,6 +135,7 @@ Then use the CLI from another terminal:
 ./build/kasli --socket build/kaslid.sock --tools-list
 ./build/kasli --socket build/kaslid.sock --call-tool system.info
 ./build/kasli --socket build/kaslid.sock --call-tool journal.query --param unit=ssh.service
+./build/kasli --socket build/kaslid.sock --call-tool service.diagnose --param unit=ssh.service
 ```
 
 Inspect audit records:
@@ -234,6 +238,7 @@ In another terminal:
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool systemd.units.list
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool systemd.unit.status --param unit=ssh.service
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool journal.query --param unit=ssh.service
+./build-linux/kasli --socket build-linux/kaslid.sock --call-tool service.diagnose --param unit=ssh.service
 ```
 
 If your distro uses `sshd.service` instead of `ssh.service`, use that unit name.

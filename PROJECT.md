@@ -90,7 +90,7 @@ kaslid daemon
   |
   +-- typed tool registry
   |     owns system.info, journal.query, systemd.units.list,
-  |     systemd.unit.status
+  |     systemd.unit.status, service.diagnose
   |
   +-- audit log
   |     append-only JSONL event stream
@@ -131,6 +131,7 @@ It currently supports:
 ./build/kasli --socket build/kaslid.sock --tools-list
 ./build/kasli --socket build/kaslid.sock --call-tool system.info
 ./build/kasli --socket build/kaslid.sock --call-tool journal.query --param unit=ssh.service
+./build/kasli --socket build/kaslid.sock --call-tool service.diagnose --param unit=ssh.service
 ./build/kasli --socket build/kaslid.sock --ask "What OS is this?" --ask-tool system.info
 ```
 
@@ -183,6 +184,29 @@ For `.service` units, it includes service failure evidence when available:
 - `ExecMainStatus`
 
 Those fields are important for questions like "why did this service fail?"
+
+### `service.diagnose`
+
+Aggregates service status and journal evidence for one systemd unit.
+
+The current contract requires:
+
+```text
+unit=<unit-name>
+```
+
+It calls the typed `systemd.unit.status` and `journal.query` tools internally,
+then returns a compact diagnosis evidence record containing:
+
+- dependency tool statuses and messages
+- key systemd state fields such as `active_state`, `sub_state`, and
+  `service_result`
+- whether journal entries were present
+- whether journal text contained common failure terms
+- a short diagnosis string such as `service is failed`
+
+The response also keeps the underlying status and journal evidence records so
+the model can reason from source evidence rather than only the derived summary.
 
 ## Request Flow
 
@@ -378,6 +402,7 @@ The current test suite covers:
 - non-systemd unavailable behavior
 - systemd status evidence formatting
 - bounded systemd unit-list formatting
+- service diagnosis aggregation and partial-failure behavior
 - session orchestration
 - model request/response/error/skipped auditing
 - Ollama prompt construction and response parsing
@@ -395,7 +420,7 @@ ctest --test-dir build --output-on-failure
 Expected current result:
 
 ```text
-68/68 tests passed
+74/74 tests passed
 ```
 
 ## Supported Test Devices
@@ -472,6 +497,7 @@ The following paths should be validated on a Linux VM or Linux machine:
 - live systemd D-Bus connection
 - `systemd.units.list`
 - `systemd.unit.status --param unit=<unit>`
+- `service.diagnose --param unit=<unit>`
 - live `journal.query --param unit=<unit>`
 - journal permission behavior for normal users
 - service failure evidence on a deliberately failed service
@@ -492,10 +518,12 @@ The project cannot currently:
 - inspect desktop application state
 - inspect user accounts deeply
 - inspect hardware beyond basic system info
-- answer multi-tool diagnostic questions automatically
+- answer arbitrary multi-tool diagnostic questions automatically
 
-The current `--ask` mode uses one selected evidence tool. A future orchestrator
-should select multiple tools for a question like "why did ssh.service fail?"
+The current `--ask` mode uses one selected evidence tool. `service.diagnose`
+is the first explicit aggregate evidence tool for a question like "why did
+ssh.service fail?" A future orchestrator should select the right aggregate or
+primitive tools automatically.
 
 ## What To Build Next
 
