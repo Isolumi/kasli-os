@@ -17,6 +17,7 @@ namespace {
 
 constexpr std::size_t kMaxUnits = 200;
 constexpr std::size_t kMaxFailedServices = 100;
+constexpr std::size_t kMaxEnabledServices = 200;
 constexpr std::size_t kMaxBodyBytes = 64 * 1024;
 
 void append_bounded(std::string& body, const std::string& text, bool& truncated) {
@@ -72,6 +73,10 @@ std::string format_failed_service_row(const detail::FailedServiceRow& row) {
   return row.unit + " load=" + row.load_state + " active=" + row.active_state +
          " sub=" + row.sub_state + " description=" + core::redact_likely_secret(row.description) +
          '\n';
+}
+
+std::string format_enabled_service_row(const detail::EnabledServiceRow& row) {
+  return row.unit + " state=" + core::redact_likely_secret(row.state) + '\n';
 }
 
 #if KASLI_HAS_SYSTEMD
@@ -176,6 +181,37 @@ std::string format_failed_services_body(const std::vector<FailedServiceRow>& row
     append_bounded(body, "truncated=true\n", truncated);
   }
   return body;
+}
+
+std::string format_enabled_services_body(const std::vector<EnabledServiceRow>& rows,
+                                         bool has_more_rows) {
+  std::string body;
+  bool truncated = false;
+  append_bounded(body, "enabled_services_count=" + std::to_string(rows.size()) + '\n', truncated);
+  if (rows.empty()) {
+    append_bounded(body, "no_enabled_services=true\n", truncated);
+  }
+  for (const auto& row : rows) {
+    append_bounded(body, format_enabled_service_row(row), truncated);
+    if (truncated) {
+      return body;
+    }
+  }
+  if (has_more_rows) {
+    append_bounded(body, "truncated=true\n", truncated);
+  }
+  return body;
+}
+
+std::string normalize_systemd_unit_file_name(const std::string& unit_file) {
+  const auto separator = unit_file.find_last_of('/');
+  if (separator == std::string::npos) {
+    return unit_file;
+  }
+  if (separator + 1 >= unit_file.size()) {
+    return "";
+  }
+  return unit_file.substr(separator + 1);
 }
 
 std::string format_systemd_unit_status_body(const SystemdUnitStatusEvidence& evidence) {
@@ -303,7 +339,7 @@ core::ToolResponse FailedServicesTool::call(const core::ToolRequest& request) co
     }
     sd_bus_message_exit_container(reply.message);
 
-    const std::string unit_value = value_or_empty(unit);
+    const std::string unit_value = detail::normalize_systemd_unit_file_name(value_or_empty(unit));
     const std::string active_value = value_or_empty(active_state);
     if (unit_value.ends_with(".service") && active_value == "failed") {
       if (rows.size() < kMaxFailedServices) {
@@ -354,6 +390,126 @@ core::ToolResponse FailedServicesTool::call(const core::ToolRequest& request) co
           .source = "services.failed",
           .summary = "bounded failed service list",
           .body = detail::format_failed_services_body(rows, has_more_rows),
+          .timestamp = core::utc_timestamp(),
+      }},
+  };
+#else
+  return unavailable_response(request);
+#endif
+}
+
+std::string EnabledServicesTool::name() const {
+  return "services.enabled";
+}
+
+core::RiskClass EnabledServicesTool::risk() const {
+  return core::RiskClass::ReadOnly;
+}
+
+core::ToolResponse EnabledServicesTool::call(const core::ToolRequest& request) const {
+#if KASLI_HAS_SYSTEMD
+  BusHandle bus;
+  int result = sd_bus_open_system(&bus.bus);
+  if (result < 0) {
+    return core::ToolResponse{
+        .request_id = request.id,
+        .status = core::ToolStatus::Error,
+        .message = "failed to connect to systemd system bus",
+        .evidence = {},
+    };
+  }
+
+  sd_bus_error error = SD_BUS_ERROR_NULL;
+  MessageHandle reply;
+  result = sd_bus_call_method(bus.bus,
+                              "org.freedesktop.systemd1",
+                              "/org/freedesktop/systemd1",
+                              "org.freedesktop.systemd1.Manager",
+                              "ListUnitFiles",
+                              &error,
+                              &reply.message,
+                              "");
+  sd_bus_error_free(&error);
+  if (result < 0) {
+    return core::ToolResponse{
+        .request_id = request.id,
+        .status = core::ToolStatus::Error,
+        .message = "failed to list systemd unit files",
+        .evidence = {},
+    };
+  }
+
+  result = sd_bus_message_enter_container(reply.message, SD_BUS_TYPE_ARRAY, "(ss)");
+  if (result < 0) {
+    return core::ToolResponse{
+        .request_id = request.id,
+        .status = core::ToolStatus::Error,
+        .message = "failed to read systemd unit file list",
+        .evidence = {},
+    };
+  }
+
+  std::vector<detail::EnabledServiceRow> rows;
+  bool has_more_rows = false;
+
+  while ((result = sd_bus_message_enter_container(reply.message, SD_BUS_TYPE_STRUCT, "ss")) > 0) {
+    const char* unit = "";
+    const char* state = "";
+
+    result = sd_bus_message_read(reply.message, "ss", &unit, &state);
+    if (result < 0) {
+      return core::ToolResponse{
+          .request_id = request.id,
+          .status = core::ToolStatus::Error,
+          .message = "failed to read systemd unit file entry",
+          .evidence = {},
+      };
+    }
+    sd_bus_message_exit_container(reply.message);
+
+    const std::string unit_value = detail::normalize_systemd_unit_file_name(value_or_empty(unit));
+    const std::string state_value = value_or_empty(state);
+    if (unit_value.ends_with(".service") &&
+        (state_value == "enabled" || state_value == "enabled-runtime")) {
+      if (rows.size() < kMaxEnabledServices) {
+        rows.push_back(detail::EnabledServiceRow{
+            .unit = unit_value,
+            .state = state_value,
+        });
+      } else {
+        has_more_rows = true;
+      }
+    }
+  }
+
+  if (result < 0) {
+    return core::ToolResponse{
+        .request_id = request.id,
+        .status = core::ToolStatus::Error,
+        .message = "failed to read systemd unit file list",
+        .evidence = {},
+    };
+  }
+
+  result = sd_bus_message_exit_container(reply.message);
+  if (result < 0) {
+    return core::ToolResponse{
+        .request_id = request.id,
+        .status = core::ToolStatus::Error,
+        .message = "failed to finish reading systemd unit file list",
+        .evidence = {},
+    };
+  }
+
+  return core::ToolResponse{
+      .request_id = request.id,
+      .status = core::ToolStatus::Ok,
+      .message = "enabled services listed",
+      .evidence = {core::Evidence{
+          .id = request.id + ":services.enabled",
+          .source = "services.enabled",
+          .summary = "bounded enabled service list",
+          .body = detail::format_enabled_services_body(rows, has_more_rows),
           .timestamp = core::utc_timestamp(),
       }},
   };

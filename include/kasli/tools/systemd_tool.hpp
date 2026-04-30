@@ -25,6 +25,11 @@ struct FailedServiceRow {
   std::string description;
 };
 
+struct EnabledServiceRow {
+  std::string unit;
+  std::string state;
+};
+
 struct SystemdUnitStatusEvidence {
   std::string unit;
   std::string id;
@@ -44,11 +49,21 @@ std::string format_systemd_units_list_body(const std::vector<SystemdUnitListRow>
                                            bool has_more_rows);
 std::string format_failed_services_body(const std::vector<FailedServiceRow>& rows,
                                         bool has_more_rows);
+std::string format_enabled_services_body(const std::vector<EnabledServiceRow>& rows,
+                                         bool has_more_rows);
+std::string normalize_systemd_unit_file_name(const std::string& unit_file);
 std::string format_systemd_unit_status_body(const SystemdUnitStatusEvidence& evidence);
 
 }  // namespace detail
 
 class FailedServicesTool final : public Tool {
+ public:
+  std::string name() const override;
+  core::RiskClass risk() const override;
+  core::ToolResponse call(const core::ToolRequest& request) const override;
+};
+
+class EnabledServicesTool final : public Tool {
  public:
   std::string name() const override;
   core::RiskClass risk() const override;

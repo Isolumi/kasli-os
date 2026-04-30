@@ -89,8 +89,9 @@ kaslid daemon
   |     allows only trusted read-only tools in the current prototype
   |
   +-- typed tool registry
-  |     owns system.info, journal.query, systemd.units.list,
-  |     systemd.unit.status, services.failed, service.diagnose
+  |     owns system.info, packages.recent_changes, journal.query,
+  |     systemd.units.list, systemd.unit.status, services.failed,
+  |     services.enabled, service.diagnose
   |
   +-- audit log
   |     append-only JSONL event stream
@@ -130,8 +131,10 @@ It currently supports:
 ```sh
 ./build/kasli --socket build/kaslid.sock --tools-list
 ./build/kasli --socket build/kaslid.sock --call-tool system.info
+./build/kasli --socket build/kaslid.sock --call-tool packages.recent_changes
 ./build/kasli --socket build/kaslid.sock --call-tool journal.query --param unit=ssh.service
 ./build/kasli --socket build/kaslid.sock --call-tool services.failed
+./build/kasli --socket build/kaslid.sock --call-tool services.enabled
 ./build/kasli --socket build/kaslid.sock --call-tool service.diagnose --param unit=ssh.service
 ./build/kasli --socket build/kaslid.sock --ask "What OS is this?" --ask-tool system.info
 ```
@@ -159,6 +162,15 @@ unit=<service-name>
 The explicit unit selector is required so the tool does not return broad recent
 logs. On macOS and non-systemd builds, this uses fixture data for testing. On
 Linux with `libsystemd`, it uses the journal API.
+
+### `packages.recent_changes`
+
+Reads bounded recent package activity from local DNF/DNF5/YUM history logs.
+
+The current implementation parses package install, upgrade, downgrade, remove,
+and reinstall rows, ignores DNF5 RPM callback stop/scriptlet noise, caps output
+at 100 recent rows, and marks truncated output. It is read-only log evidence,
+not package mutation.
 
 ### `systemd.units.list`
 
@@ -195,6 +207,16 @@ It returns a compact evidence body with `failed_services_count=<n>` and one row
 per failed service up to the configured cap. When there are no failed services,
 it returns `no_failed_services=true`. This gives the assistant a read-only way
 to find candidate units before calling `service.diagnose`.
+
+### `services.enabled`
+
+Lists bounded enabled systemd `.service` unit files on Linux builds with
+`libsystemd`.
+
+It returns `enabled_services_count=<n>` plus service rows for `enabled` and
+`enabled-runtime` states. When there are no enabled services, it returns
+`no_enabled_services=true`. This gives the assistant a read-only inventory of
+services configured to start automatically.
 
 ### `service.diagnose`
 
@@ -413,6 +435,8 @@ The current test suite covers:
 - non-systemd unavailable behavior
 - systemd status evidence formatting
 - bounded systemd unit-list formatting
+- package history log parsing and bounded package-change evidence
+- enabled service unit-file listing and bounded evidence
 - service diagnosis aggregation and partial-failure behavior
 - session orchestration
 - model request/response/error/skipped auditing
@@ -431,7 +455,7 @@ ctest --test-dir build --output-on-failure
 Expected current result:
 
 ```text
-79/79 tests passed
+92/92 tests passed
 ```
 
 ## Supported Test Devices
@@ -462,7 +486,9 @@ Good for:
 - live `systemd.units.list`
 - live `systemd.unit.status`
 - live `services.failed`
+- live `services.enabled`
 - live `journal.query`
+- package manager history logs
 - journal permission behavior
 - packaging assumptions
 
@@ -496,9 +522,9 @@ That is expected.
 
 That is expected.
 
-`systemd.units.list`, `systemd.unit.status`, and `services.failed` are visible
-in the tool registry, but live systemd support is not built because macOS does
-not have systemd.
+`systemd.units.list`, `systemd.unit.status`, `services.failed`, and
+`services.enabled` are visible in the tool registry, but live systemd support is
+not built because macOS does not have systemd.
 
 That is expected.
 
@@ -511,6 +537,8 @@ The following paths should be validated on a Linux VM or Linux machine:
 - `systemd.units.list`
 - `systemd.unit.status --param unit=<unit>`
 - `services.failed`
+- `services.enabled`
+- `packages.recent_changes`
 - `service.diagnose --param unit=<unit>`
 - live `journal.query --param unit=<unit>`
 - journal permission behavior for normal users
@@ -529,6 +557,7 @@ The project cannot currently:
 - edit config files
 - create rollback snapshots
 - restore rollback snapshots
+- inspect installed package inventory
 - inspect desktop application state
 - inspect user accounts deeply
 - inspect hardware beyond basic system info
@@ -545,8 +574,6 @@ The recommended next stage is still read-only.
 
 Add tools that make the assistant better at explaining the machine:
 
-- `packages.recent_changes`
-- `services.enabled`
 - `packages.list`
 - `hardware.summary`
 - `power.status`

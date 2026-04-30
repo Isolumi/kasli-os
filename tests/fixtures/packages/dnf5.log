@@ -1,0 +1,5 @@
+2026-04-30T03:56:52+0000 [18165] INFO RPM callback open file "/var/cache/libdnf5/updates/packages/cmake-rpm-macros-3.31.11-1.fc43.noarch.rpm"
+2026-04-30T03:56:52+0000 [18165] INFO RPM callback install start "cmake-rpm-macros-0:3.31.11-1.fc43.noarch" total 9084
+2026-04-30T03:56:52+0000 [18165] INFO RPM callback install stop "cmake-rpm-macros-0:3.31.11-1.fc43.noarch" amount 9084 total 9084
+2026-04-30T16:33:38+0000 [7433] INFO RPM callback install start "openssh-0:10.0p1-9.fc43.x86_64" total 1459420
+2026-04-30T16:33:38+0000 [7433] INFO RPM callback start %post scriptlet "openssh-0:10.0p1-9.fc43.x86_64"

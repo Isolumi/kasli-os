@@ -112,9 +112,11 @@ Expected tools:
 
 ```text
 system.info
+packages.recent_changes
 systemd.units.list
 systemd.unit.status
 services.failed
+services.enabled
 journal.query
 service.diagnose
 ```
@@ -129,6 +131,19 @@ Expected:
 
 - JSON response with `"ok": true`.
 - Evidence includes Fedora/Linux OS and kernel details.
+
+Read recent package changes:
+
+```sh
+./build-fedora/kasli --socket build-fedora/kaslid.sock --call-tool packages.recent_changes
+```
+
+Expected:
+
+- JSON response with `"ok": true` when package history logs are readable.
+- Evidence body includes `package_changes_count=<n>`.
+- If readable logs exist but no changes are found, evidence includes
+  `no_package_changes=true`.
 
 List systemd units:
 
@@ -155,6 +170,19 @@ Expected:
 - If there are no failed services, evidence includes `no_failed_services=true`.
 - If failed services are present, rows contain service names to pass to
   `service.diagnose`.
+
+Test enabled services:
+
+```sh
+./build-fedora/kasli --socket build-fedora/kaslid.sock --call-tool services.enabled
+```
+
+Expected:
+
+- JSON response with `"ok": true`.
+- Evidence body includes `enabled_services_count=<n>`.
+- If there are no enabled services, evidence includes
+  `no_enabled_services=true`.
 
 ## 6. Pick A Real Service Unit
 
@@ -382,7 +410,9 @@ After testing, record:
 - Whether CMake found `libsystemd`.
 - Test count and result.
 - Which unit names worked.
+- Whether `packages.recent_changes` returned bounded package-change evidence.
 - Whether `services.failed` returned a bounded failed-service summary.
+- Whether `services.enabled` returned a bounded enabled-service summary.
 - Whether `service.diagnose` returned aggregate and underlying evidence.
 - Whether journal access required `systemd-journal` group membership.
 - Any failed commands and exact JSON responses.

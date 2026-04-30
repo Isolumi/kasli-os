@@ -30,9 +30,11 @@ The current prototype proves these pieces:
 Current registered tools:
 
 - `system.info`
+- `packages.recent_changes`
 - `systemd.units.list`
 - `systemd.unit.status`
 - `services.failed`
+- `services.enabled`
 - `journal.query`
 - `service.diagnose`
 
@@ -44,6 +46,22 @@ Verified on:
 
 - macOS, with `os_release=unavailable` expected
 - Fedora Linux 43 KDE, with live `/etc/os-release` and kernel evidence
+
+### `packages.recent_changes`
+
+Reads bounded recent package activity from local DNF/DNF5/YUM history logs.
+
+Current behavior:
+
+- parses package install, upgrade, downgrade, remove, and reinstall rows
+- ignores RPM callback stop rows and scriptlets
+- returns `package_changes_count=<n>`
+- returns `no_package_changes=true` when readable logs exist but no package
+  changes are found
+- stores at most 100 recent package-change rows
+- marks `truncated=true` when more rows exist
+
+Verified on Fedora Linux 43.
 
 ### `systemd.units.list`
 
@@ -80,6 +98,22 @@ Current behavior:
 - returns `no_failed_services=true` when no failed services are found
 - stores at most 100 failed service rows
 - marks `truncated=true` when more failed services exist
+- drains the full D-Bus array so large hosts do not fail while closing the
+  response
+
+Verified on Fedora Linux 43.
+
+### `services.enabled`
+
+Lists enabled systemd `.service` unit files on Linux builds with `libsystemd`.
+
+Current behavior:
+
+- returns `enabled_services_count=<n>`
+- returns `no_enabled_services=true` when no enabled services are found
+- includes `enabled` and `enabled-runtime` service states
+- stores at most 200 enabled service rows
+- marks `truncated=true` when more enabled services exist
 - drains the full D-Bus array so large hosts do not fail while closing the
   response
 
@@ -124,15 +158,17 @@ Previous local macOS checkout before `services.failed`:
 The macOS checkout should be retested after pulling the `services.failed`
 commit.
 
-Fedora Linux 43 KDE checkout after `service.diagnose` and `services.failed`:
+Fedora Linux 43 KDE checkout after `packages.recent_changes` and
+`services.enabled`:
 
 ```text
-79/79 tests passed
+92/92 tests passed
 ```
 
 Fresh daemon/CLI checks passed on Fedora Linux 43 for `system.info`,
 `systemd.units.list`, `systemd.unit.status`, `journal.query`,
-`services.failed`, `service.diagnose`, and audit log metadata.
+`services.failed`, `services.enabled`, `packages.recent_changes`,
+`service.diagnose`, and audit log metadata.
 
 ## How To Verify Locally
 
@@ -155,7 +191,9 @@ In another terminal:
 ```sh
 ./build/kasli --socket build/kaslid.sock --tools-list
 ./build/kasli --socket build/kaslid.sock --call-tool system.info
+./build/kasli --socket build/kaslid.sock --call-tool packages.recent_changes
 ./build/kasli --socket build/kaslid.sock --call-tool services.failed
+./build/kasli --socket build/kaslid.sock --call-tool services.enabled
 ./build/kasli --socket build/kaslid.sock --call-tool service.diagnose --param unit=ssh.service
 tail -n 20 build/dev-audit.jsonl
 ```
@@ -183,7 +221,8 @@ Kasli still cannot:
 - restart, enable, or disable services
 - edit config files
 - create or restore rollback snapshots
-- inspect detailed hardware, battery, GPU, disk, network, or user state
+- inspect installed package inventory or detailed hardware, battery, GPU, disk,
+  network, or user state
 - select tools automatically for arbitrary questions
 - perform privileged admin actions
 - provide a desktop UI
@@ -195,8 +234,7 @@ These are intentional limits until the read-only evidence layer is reliable.
 
 Near-term read-only tools:
 
-- `packages.recent_changes`
-- `services.enabled`
+- `packages.list`
 - `hardware.summary`
 - `disk.usage`
 - `network.summary`

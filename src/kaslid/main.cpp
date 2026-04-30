@@ -7,6 +7,7 @@
 #include <kasli/policy/policy_broker.hpp>
 #include <kasli/session/session_service.hpp>
 #include <kasli/tools/journal_tool.hpp>
+#include <kasli/tools/package_tool.hpp>
 #include <kasli/tools/service_diagnose_tool.hpp>
 #include <kasli/tools/systemd_tool.hpp>
 #include <kasli/tools/system_info_tool.hpp>
@@ -167,9 +168,11 @@ int main(int argc, char** argv) {
   try {
     kasli::tools::ToolRegistry registry;
     registry.add(std::make_unique<kasli::tools::SystemInfoTool>());
+    registry.add(std::make_unique<kasli::tools::PackageRecentChangesTool>());
     registry.add(std::make_unique<kasli::tools::SystemdUnitsTool>());
     registry.add(std::make_unique<kasli::tools::SystemdUnitStatusTool>());
     registry.add(std::make_unique<kasli::tools::FailedServicesTool>());
+    registry.add(std::make_unique<kasli::tools::EnabledServicesTool>());
 #if KASLI_HAS_SYSTEMD
     registry.add(std::make_unique<kasli::tools::LiveJournalTool>());
 #else

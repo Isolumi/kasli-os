@@ -23,6 +23,8 @@ This repository currently builds:
 Implemented tools:
 
 - `system.info`: returns OS and kernel identity evidence.
+- `packages.recent_changes`: reads bounded recent package activity from local
+  DNF/DNF5/YUM history logs.
 - `journal.query`: returns bounded, redacted journal evidence for an explicit
   systemd unit selector.
 - `systemd.units.list`: lists bounded systemd unit state on Linux builds with
@@ -32,6 +34,8 @@ Implemented tools:
   `Result`, `ExecMainCode`, and `ExecMainStatus`.
 - `services.failed`: lists bounded failed systemd `.service` units on Linux
   builds with `libsystemd`.
+- `services.enabled`: lists bounded enabled systemd `.service` unit files on
+  Linux builds with `libsystemd`.
 - `service.diagnose`: aggregates `systemd.unit.status` and `journal.query` for
   one unit, returning a compact read-only diagnosis evidence record plus the
   underlying status and journal evidence.
@@ -136,8 +140,10 @@ Then use the CLI from another terminal:
 ```sh
 ./build/kasli --socket build/kaslid.sock --tools-list
 ./build/kasli --socket build/kaslid.sock --call-tool system.info
+./build/kasli --socket build/kaslid.sock --call-tool packages.recent_changes
 ./build/kasli --socket build/kaslid.sock --call-tool journal.query --param unit=ssh.service
 ./build/kasli --socket build/kaslid.sock --call-tool services.failed
+./build/kasli --socket build/kaslid.sock --call-tool services.enabled
 ./build/kasli --socket build/kaslid.sock --call-tool service.diagnose --param unit=ssh.service
 ```
 
@@ -197,7 +203,8 @@ Best next test device:
 
 - Linux VM with systemd. Fedora, Ubuntu, Debian, openSUSE, or NixOS are all
   reasonable. This is the safest place to validate live `systemd.units.list`,
-  `systemd.unit.status`, `services.failed`, and `journal.query`.
+  `systemd.unit.status`, `services.failed`, `services.enabled`,
+  `packages.recent_changes`, and `journal.query`.
 
 Later hardware test:
 
@@ -238,9 +245,11 @@ In another terminal:
 
 ```sh
 ./build-linux/kasli --socket build-linux/kaslid.sock --tools-list
+./build-linux/kasli --socket build-linux/kaslid.sock --call-tool packages.recent_changes
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool systemd.units.list
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool systemd.unit.status --param unit=ssh.service
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool services.failed
+./build-linux/kasli --socket build-linux/kaslid.sock --call-tool services.enabled
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool journal.query --param unit=ssh.service
 ./build-linux/kasli --socket build-linux/kaslid.sock --call-tool service.diagnose --param unit=ssh.service
 ```
@@ -250,7 +259,7 @@ If your distro uses `sshd.service` instead of `ssh.service`, use that unit name.
 ## Current Limitations
 
 - No mutating actions are implemented.
-- No package manager integration is implemented yet.
+- No package mutation or installed-package inventory is implemented yet.
 - No rollback integration is implemented yet.
 - No desktop UI is implemented yet.
 - Live systemd paths require Linux with `libsystemd`; macOS only exercises

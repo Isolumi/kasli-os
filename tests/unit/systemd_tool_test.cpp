@@ -26,6 +26,13 @@ TEST_CASE("failed services tool metadata is read-only") {
   REQUIRE(tool.risk() == kasli::core::RiskClass::ReadOnly);
 }
 
+TEST_CASE("enabled services tool metadata is read-only") {
+  kasli::tools::EnabledServicesTool tool;
+
+  REQUIRE(tool.name() == "services.enabled");
+  REQUIRE(tool.risk() == kasli::core::RiskClass::ReadOnly);
+}
+
 TEST_CASE("failed services body lists bounded failed service rows") {
   const auto body = kasli::tools::detail::format_failed_services_body(
       std::vector<kasli::tools::detail::FailedServiceRow>{
@@ -62,12 +69,63 @@ TEST_CASE("failed services body reports when no failed services are found") {
   REQUIRE(body.find("truncated=true") == std::string::npos);
 }
 
+TEST_CASE("enabled services body lists bounded enabled service rows") {
+  const auto body = kasli::tools::detail::format_enabled_services_body(
+      std::vector<kasli::tools::detail::EnabledServiceRow>{
+          {
+              .unit = "sshd.service",
+              .state = "enabled",
+          },
+          {
+              .unit = "cups.service",
+              .state = "enabled-runtime",
+          },
+      },
+      true);
+
+  REQUIRE(body.find("enabled_services_count=2") != std::string::npos);
+  REQUIRE(body.find("sshd.service state=enabled") != std::string::npos);
+  REQUIRE(body.find("cups.service state=enabled-runtime") != std::string::npos);
+  REQUIRE(body.find("truncated=true") != std::string::npos);
+  REQUIRE(body.find("no_enabled_services=true") == std::string::npos);
+}
+
+TEST_CASE("enabled services body reports when no enabled services are found") {
+  const auto body = kasli::tools::detail::format_enabled_services_body({}, false);
+
+  REQUIRE(body.find("enabled_services_count=0") != std::string::npos);
+  REQUIRE(body.find("no_enabled_services=true") != std::string::npos);
+  REQUIRE(body.find("truncated=true") == std::string::npos);
+}
+
+TEST_CASE("enabled services normalize systemd unit file paths to unit names") {
+  REQUIRE(kasli::tools::detail::normalize_systemd_unit_file_name(
+              "/usr/lib/systemd/system/sshd.service") == "sshd.service");
+  REQUIRE(kasli::tools::detail::normalize_systemd_unit_file_name("cups.service") ==
+          "cups.service");
+}
+
 TEST_CASE("failed services tool reports unavailable when systemd is not built") {
 #if !KASLI_HAS_SYSTEMD
   kasli::tools::FailedServicesTool tool;
   auto response = tool.call(kasli::core::ToolRequest{
       .id = "req-services-failed-unavailable",
       .tool_name = "services.failed",
+      .risk = kasli::core::RiskClass::ReadOnly,
+  });
+
+  REQUIRE(response.status == kasli::core::ToolStatus::Error);
+  REQUIRE(response.message == "systemd support was not built");
+  REQUIRE(response.evidence.empty());
+#endif
+}
+
+TEST_CASE("enabled services tool reports unavailable when systemd is not built") {
+#if !KASLI_HAS_SYSTEMD
+  kasli::tools::EnabledServicesTool tool;
+  auto response = tool.call(kasli::core::ToolRequest{
+      .id = "req-services-enabled-unavailable",
+      .tool_name = "services.enabled",
       .risk = kasli::core::RiskClass::ReadOnly,
   });
 
@@ -95,6 +153,27 @@ TEST_CASE("failed services tool succeeds against a live system bus") {
   REQUIRE(response.message == "failed services listed");
   REQUIRE(response.evidence.size() == 1);
   REQUIRE(response.evidence.front().source == "services.failed");
+#endif
+}
+
+TEST_CASE("enabled services tool succeeds against a live system bus") {
+#if KASLI_HAS_SYSTEMD
+  kasli::tools::EnabledServicesTool tool;
+  auto response = tool.call(kasli::core::ToolRequest{
+      .id = "req-services-enabled-live",
+      .tool_name = "services.enabled",
+      .risk = kasli::core::RiskClass::ReadOnly,
+  });
+
+  if (response.status == kasli::core::ToolStatus::Error &&
+      response.message == "failed to connect to systemd system bus") {
+    SKIP("systemd system bus is unavailable");
+  }
+
+  REQUIRE(response.status == kasli::core::ToolStatus::Ok);
+  REQUIRE(response.message == "enabled services listed");
+  REQUIRE(response.evidence.size() == 1);
+  REQUIRE(response.evidence.front().source == "services.enabled");
 #endif
 }
 
