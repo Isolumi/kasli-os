@@ -113,6 +113,7 @@ Expected tools:
 ```text
 system.info
 disk.usage
+network.summary
 packages.recent_changes
 packages.list
 systemd.units.list
@@ -145,6 +146,19 @@ Expected:
 - JSON response with `"ok": true`.
 - Evidence body includes `disk_mounts_count=<n>`.
 - Root or other persistent mounted filesystems appear when measurable.
+
+Read network summary:
+
+```sh
+./build-fedora/kasli --socket build-fedora/kaslid.sock --call-tool network.summary
+```
+
+Expected:
+
+- JSON response with `"ok": true`.
+- Evidence body includes `network_interfaces_count=<n>`.
+- Loopback and local network interfaces appear when exposed by `/sys/class/net`.
+- Interfaces that own a default route include `default_route=true`.
 
 Read recent package changes:
 
@@ -437,6 +451,7 @@ After testing, record:
 - Test count and result.
 - Which unit names worked.
 - Whether `disk.usage` returned bounded mounted-filesystem evidence.
+- Whether `network.summary` returned bounded local interface evidence.
 - Whether `packages.recent_changes` returned bounded package-change evidence.
 - Whether `packages.list` returned bounded installed-package evidence.
 - Whether `services.failed` returned a bounded failed-service summary.

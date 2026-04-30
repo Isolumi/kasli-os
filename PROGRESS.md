@@ -31,6 +31,7 @@ Current registered tools:
 
 - `system.info`
 - `disk.usage`
+- `network.summary`
 - `packages.recent_changes`
 - `packages.list`
 - `systemd.units.list`
@@ -62,6 +63,22 @@ Current behavior:
 - returns `disk_mounts_count=<n>`
 - returns `no_disk_mounts=true` when no usable mount rows are found
 - stores at most 100 mounted filesystem rows
+- marks `truncated=true` when more rows exist
+
+Verified on Fedora Linux 43.
+
+### `network.summary`
+
+Lists bounded local network interface state on Linux.
+
+Current behavior:
+
+- reads `/sys/class/net`
+- attaches IPv4 and IPv6 addresses from `getifaddrs`
+- marks interfaces that own a default route from `/proc/net/route`
+- returns `network_interfaces_count=<n>`
+- returns `no_network_interfaces=true` when no interface rows are found
+- stores at most 100 interface rows
 - marks `truncated=true` when more rows exist
 
 Verified on Fedora Linux 43.
@@ -193,16 +210,17 @@ Previous local macOS checkout before `services.failed`:
 The macOS checkout should be retested after pulling the `services.failed`
 commit.
 
-Fedora Linux 43 KDE checkout after `packages.list`:
+Fedora Linux 43 KDE checkout after `network.summary`:
 
 ```text
-108/108 tests passed
+116/116 tests passed
 ```
 
 Fresh daemon/CLI checks passed on Fedora Linux 43 for `system.info`,
 `systemd.units.list`, `systemd.unit.status`, `journal.query`,
 `services.failed`, `services.enabled`, `packages.recent_changes`,
-`packages.list`, `service.diagnose`, and audit log metadata.
+`packages.list`, `disk.usage`, `network.summary`, `service.diagnose`, and audit
+log metadata.
 
 ## How To Verify Locally
 
@@ -226,6 +244,7 @@ In another terminal:
 ./build/kasli --socket build/kaslid.sock --tools-list
 ./build/kasli --socket build/kaslid.sock --call-tool system.info
 ./build/kasli --socket build/kaslid.sock --call-tool disk.usage
+./build/kasli --socket build/kaslid.sock --call-tool network.summary
 ./build/kasli --socket build/kaslid.sock --call-tool packages.recent_changes
 ./build/kasli --socket build/kaslid.sock --call-tool packages.list
 ./build/kasli --socket build/kaslid.sock --call-tool services.failed
@@ -257,7 +276,7 @@ Kasli still cannot:
 - restart, enable, or disable services
 - edit config files
 - create or restore rollback snapshots
-- inspect detailed hardware, battery, GPU, network, or user state
+- inspect detailed hardware, battery, GPU, or user state
 - select tools automatically for arbitrary questions
 - perform privileged admin actions
 - provide a desktop UI
@@ -270,7 +289,6 @@ These are intentional limits until the read-only evidence layer is reliable.
 Near-term read-only tools:
 
 - `hardware.summary`
-- `network.summary`
 - `power.status`
 
 Next architecture step:

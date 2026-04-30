@@ -92,7 +92,7 @@ kaslid daemon
   |     owns system.info, disk.usage, packages.recent_changes,
   |     packages.list, journal.query, systemd.units.list,
   |     systemd.unit.status, services.failed, services.enabled,
-  |     service.diagnose
+  |     network.summary, service.diagnose
   |
   +-- audit log
   |     append-only JSONL event stream
@@ -183,6 +183,16 @@ The production backend reads `/proc/self/mountinfo`, filters obvious virtual
 filesystems, and measures candidate mounts with `std::filesystem::space()`. It
 returns up to 100 mounted filesystem rows as bounded evidence. This gives the
 assistant a read-only way to answer basic disk-capacity and free-space
+questions without shell access.
+
+### `network.summary`
+
+Lists bounded local network interface state on Linux.
+
+The production backend reads `/sys/class/net`, attaches IPv4 and IPv6 addresses
+from `getifaddrs`, marks default-route interfaces from `/proc/net/route`, and
+returns up to 100 interface rows as bounded evidence. This gives the assistant
+a read-only way to answer basic local connectivity and interface-state
 questions without shell access.
 
 ### `packages.list`
@@ -458,6 +468,7 @@ The current test suite covers:
 - systemd status evidence formatting
 - bounded systemd unit-list formatting
 - mountinfo parsing and bounded disk usage evidence
+- local network interface parsing and bounded network summary evidence
 - package history log parsing and bounded package-change evidence
 - fixed RPM package inventory parsing and bounded package-list evidence
 - enabled service unit-file listing and bounded evidence
@@ -479,7 +490,7 @@ ctest --test-dir build --output-on-failure
 Expected current result:
 
 ```text
-108/108 tests passed
+116/116 tests passed
 ```
 
 ## Supported Test Devices
@@ -563,6 +574,7 @@ The following paths should be validated on a Linux VM or Linux machine:
 - `services.failed`
 - `services.enabled`
 - `disk.usage`
+- `network.summary`
 - `packages.recent_changes`
 - `service.diagnose --param unit=<unit>`
 - live `journal.query --param unit=<unit>`
@@ -600,7 +612,6 @@ Add tools that make the assistant better at explaining the machine:
 
 - `hardware.summary`
 - `power.status`
-- `network.summary`
 - `users.summary`
 - `security.baseline`
 

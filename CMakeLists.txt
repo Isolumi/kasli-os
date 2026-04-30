@@ -27,6 +27,7 @@ add_library(kasli_core
   src/session/session_service.cpp
   src/tools/disk_tool.cpp
   src/tools/journal_tool.cpp
+  src/tools/network_tool.cpp
   src/tools/package_tool.cpp
   src/tools/service_diagnose_tool.cpp
   src/tools/systemd_tool.cpp
@@ -114,6 +115,13 @@ catch_discover_tests(kasli_package_tool_test
 add_executable(kasli_disk_tool_test tests/unit/disk_tool_test.cpp)
 target_link_libraries(kasli_disk_tool_test PRIVATE kasli_core Catch2::Catch2WithMain)
 catch_discover_tests(kasli_disk_tool_test
+  TEST_PREFIX "tools."
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+add_executable(kasli_network_tool_test tests/unit/network_tool_test.cpp)
+target_link_libraries(kasli_network_tool_test PRIVATE kasli_core Catch2::Catch2WithMain)
+catch_discover_tests(kasli_network_tool_test
   TEST_PREFIX "tools."
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
