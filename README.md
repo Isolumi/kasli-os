@@ -137,6 +137,41 @@ ctest --test-dir build --output-on-failure
 
 Expected result on the current prototype: all tests pass.
 
+## Build The RPM
+
+On Fedora, install the RPM build dependency and build a local package:
+
+```sh
+sudo dnf install rpm-build
+cmake -S . -B build-fedora -DCMAKE_BUILD_TYPE=Release
+cmake --build build-fedora
+cpack -G RPM --config build-fedora/CPackConfig.cmake
+```
+
+The RPM is written under `build-fedora/`. Copy that RPM to a Fedora machine,
+then install and smoke test it with:
+
+```sh
+sudo dnf install ./kasli-os-0.1.0-1.*.rpm
+systemctl --user start kaslid
+kasli --tools-list
+kasli --call-tool system.info
+```
+
+Stop and remove it with:
+
+```sh
+systemctl --user stop kaslid
+sudo dnf remove kasli-os
+```
+
+Use `systemctl --user enable --now kaslid` instead of `start` if you want the
+daemon to start automatically in future user sessions.
+
+Installed defaults use `$XDG_RUNTIME_DIR/kaslid.sock` for the Unix socket and
+`$XDG_STATE_HOME/kasli/audit.jsonl`, or `$HOME/.local/state/kasli/audit.jsonl`,
+or `kasli-audit.jsonl` for the audit log.
+
 ## Run The Daemon
 
 Start the daemon in one terminal:
@@ -238,7 +273,7 @@ Examples:
 
 ```sh
 # Fedora
-sudo dnf install cmake gcc-c++ pkgconf-pkg-config systemd-devel
+sudo dnf install cmake gcc-c++ pkgconf-pkg-config systemd-devel rpm-build
 
 # Ubuntu/Debian
 sudo apt install cmake g++ pkg-config libsystemd-dev

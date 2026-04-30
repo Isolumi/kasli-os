@@ -475,11 +475,47 @@ CMake fetches Catch2, nlohmann/json, and CLI11 through `FetchContent`.
 project still builds, and systemd tools return controlled unavailable responses
 where appropriate.
 
+## Packaging
+
+The first shipped-product artifact is a local Fedora RPM built with CPack:
+
+```sh
+sudo dnf install rpm-build
+cmake -S . -B build-fedora -DCMAKE_BUILD_TYPE=Release
+cmake --build build-fedora
+cpack -G RPM --config build-fedora/CPackConfig.cmake
+```
+
+The RPM installs:
+
+```text
+/usr/bin/kasli
+/usr/bin/kaslid
+/usr/lib/systemd/user/kaslid.service
+```
+
+It is intended for local DNF install on a new Fedora machine:
+
+```sh
+sudo dnf install ./kasli-os-0.1.0-1.*.rpm
+systemctl --user start kaslid
+kasli --tools-list
+kasli --call-tool system.info
+```
+
+Installed defaults use `$XDG_RUNTIME_DIR/kaslid.sock` for the daemon socket and
+`$XDG_STATE_HOME/kasli/audit.jsonl`, or `$HOME/.local/state/kasli/audit.jsonl`,
+or `kasli-audit.jsonl` for the audit log. This keeps the first package
+user-scoped rather than a privileged system service. Use
+`systemctl --user enable --now kaslid` instead of `start` when persistent user
+autostart is wanted.
+
 ## Test Strategy
 
 The current test suite covers:
 
 - core typed schema serialization
+- installed runtime default path selection
 - timestamp format
 - audit log append behavior and failure handling
 - policy allow/deny behavior
@@ -515,7 +551,7 @@ ctest --test-dir build --output-on-failure
 Expected current result:
 
 ```text
-129/129 tests passed
+134/134 tests passed
 ```
 
 ## Supported Test Devices

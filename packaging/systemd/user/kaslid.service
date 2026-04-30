@@ -1,0 +1,12 @@
+[Unit]
+Description=Kasli read-only system assistant daemon
+Documentation=file:/usr/share/doc/kasli-os/README.md
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/kaslid
+Restart=on-failure
+RestartSec=2s
+
+[Install]
+WantedBy=default.target

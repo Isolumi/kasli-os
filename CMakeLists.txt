@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(kasli_os LANGUAGES CXX)
+project(kasli_os VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -11,11 +11,13 @@ option(KASLI_ENABLE_CURL "Build Ollama provider when libcurl is available" ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(KasliDependencies)
+include(GNUInstallDirs)
 
 include(CTest)
 include(Catch)
 
 add_library(kasli_core
+  src/app/default_paths.cpp
   src/audit/audit_log.cpp
   src/core/json.cpp
   src/core/types.cpp
@@ -63,6 +65,16 @@ target_compile_definitions(kaslid
 add_executable(kasli src/kasli-cli/main.cpp)
 target_link_libraries(kasli PRIVATE kasli_core CLI11::CLI11)
 
+install(TARGETS kaslid kasli
+  RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+)
+install(FILES packaging/systemd/user/kaslid.service
+  DESTINATION "lib/systemd/user"
+)
+install(FILES README.md PROGRESS.md
+  DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/doc/kasli-os"
+)
+
 add_executable(kasli_smoke_test tests/unit/smoke_test.cpp)
 target_link_libraries(kasli_smoke_test PRIVATE Catch2::Catch2WithMain)
 catch_discover_tests(kasli_smoke_test)
@@ -70,6 +82,10 @@ catch_discover_tests(kasli_smoke_test)
 add_executable(kasli_core_types_test tests/unit/core_types_test.cpp)
 target_link_libraries(kasli_core_types_test PRIVATE kasli_core Catch2::Catch2WithMain)
 catch_discover_tests(kasli_core_types_test TEST_PREFIX "core_types.")
+
+add_executable(kasli_default_paths_test tests/unit/default_paths_test.cpp)
+target_link_libraries(kasli_default_paths_test PRIVATE kasli_core Catch2::Catch2WithMain)
+catch_discover_tests(kasli_default_paths_test TEST_PREFIX "app.")
 
 add_executable(kasli_audit_log_test tests/unit/audit_log_test.cpp)
 target_link_libraries(kasli_audit_log_test PRIVATE kasli_core Catch2::Catch2WithMain)
@@ -168,3 +184,23 @@ catch_discover_tests(kasli_line_protocol_test TEST_PREFIX "ipc.")
 add_executable(kasli_unix_socket_test tests/integration/unix_socket_test.cpp)
 target_link_libraries(kasli_unix_socket_test PRIVATE kasli_core Catch2::Catch2WithMain)
 catch_discover_tests(kasli_unix_socket_test TEST_PREFIX "ipc.")
+
+set(CPACK_GENERATOR "RPM")
+set(CPACK_PACKAGE_NAME "kasli-os")
+set(CPACK_PACKAGE_VENDOR "Kasli")
+set(CPACK_PACKAGE_CONTACT "Kasli Prototype Maintainers")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
+  "Kasli read-only local system assistant prototype"
+)
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_DIRECTORY "${CMAKE_BINARY_DIR}")
+set(CPACK_OUTPUT_FILE_PREFIX "${CMAKE_BINARY_DIR}")
+set(CPACK_RPM_PACKAGE_NAME "kasli-os")
+set(CPACK_RPM_PACKAGE_RELEASE "1")
+set(CPACK_RPM_PACKAGE_LICENSE "LicenseRef-Kasli-Prototype")
+set(CPACK_RPM_PACKAGE_GROUP "Applications/System")
+set(CPACK_RPM_FILE_NAME "RPM-DEFAULT")
+set(CPACK_RPM_PACKAGE_DESCRIPTION
+  "Kasli is a read-only local daemon and CLI prototype that exposes typed operating-system inspection tools through a constrained, auditable interface."
+)
+include(CPack)

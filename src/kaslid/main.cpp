@@ -1,3 +1,4 @@
+#include <kasli/app/default_paths.hpp>
 #include <kasli/audit/audit_log.hpp>
 #include <kasli/core/types.hpp>
 #include <kasli/core/uuid.hpp>
@@ -35,8 +36,8 @@ namespace {
 #endif
 
 struct Options {
-  std::filesystem::path socket_path = "kaslid.sock";
-  std::filesystem::path audit_path = "kasli-audit.jsonl";
+  std::filesystem::path socket_path = kasli::app::default_socket_path();
+  std::filesystem::path audit_path = kasli::app::default_audit_log_path();
   bool once = false;
 };
 

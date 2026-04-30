@@ -1,4 +1,5 @@
 #include <CLI/CLI.hpp>
+#include <kasli/app/default_paths.hpp>
 #include <kasli/core/types.hpp>
 #include <kasli/ipc/line_protocol.hpp>
 #include <kasli/ipc/unix_socket.hpp>
@@ -28,7 +29,7 @@ std::map<std::string, std::string> parse_tool_params(const std::vector<std::stri
 int main(int argc, char** argv) {
   CLI::App app{"Kasli read-only system assistant CLI"};
 
-  std::string socket_path = "kaslid.sock";
+  std::string socket_path = kasli::app::default_socket_path().string();
   bool list_tools = false;
   std::string call_tool;
   std::string ask_prompt;

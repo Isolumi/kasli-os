@@ -24,6 +24,7 @@ The current prototype proves these pieces:
 - Likely secret strings are redacted in implemented evidence tools.
 - Optional Ollama integration can answer from selected evidence when a local
   Ollama server is running.
+- A local Fedora RPM can be built with CPack and installed with DNF.
 
 ## Working Tools
 
@@ -247,10 +248,10 @@ Previous local macOS checkout before `services.failed`:
 The macOS checkout should be retested after pulling the `services.failed`
 commit.
 
-Fedora Linux 43 KDE checkout after `power.status`:
+Fedora Linux 43 KDE checkout after RPM packaging:
 
 ```text
-129/129 tests passed
+134/134 tests passed
 ```
 
 Fresh daemon/CLI checks passed on Fedora Linux 43 for `system.info`,
@@ -258,6 +259,19 @@ Fresh daemon/CLI checks passed on Fedora Linux 43 for `system.info`,
 `services.failed`, `services.enabled`, `packages.recent_changes`,
 `packages.list`, `disk.usage`, `hardware.summary`, `network.summary`,
 `power.status`, `service.diagnose`, and audit log metadata.
+
+Fedora RPM packaging now installs:
+
+```text
+/usr/bin/kasli
+/usr/bin/kaslid
+/usr/lib/systemd/user/kaslid.service
+```
+
+Installed runtime defaults use `$XDG_RUNTIME_DIR/kaslid.sock` and
+`$XDG_STATE_HOME/kasli/audit.jsonl`, falling back to
+`$HOME/.local/state/kasli/audit.jsonl` and then `kasli-audit.jsonl` when those
+environment variables are unavailable.
 
 ## How To Verify Locally
 
@@ -267,6 +281,27 @@ Build and run tests:
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build
 ctest --test-dir build --output-on-failure
+```
+
+Build the RPM:
+
+```sh
+sudo dnf install rpm-build
+cmake -S . -B build-fedora -DCMAKE_BUILD_TYPE=Release
+cmake --build build-fedora
+cpack -G RPM --config build-fedora/CPackConfig.cmake
+rpm -qpl build-fedora/kasli-os-0.1.0-1.*.rpm
+```
+
+Install and smoke test on Fedora:
+
+```sh
+sudo dnf install ./kasli-os-0.1.0-1.*.rpm
+systemctl --user start kaslid
+kasli --tools-list
+kasli --call-tool system.info
+systemctl --user stop kaslid
+sudo dnf remove kasli-os
 ```
 
 Start the daemon:
@@ -319,7 +354,7 @@ Kasli still cannot:
 - select tools automatically for arbitrary questions
 - perform privileged admin actions
 - provide a desktop UI
-- package itself as a distro/remix
+- package itself as a hosted DNF repository or distro/remix
 
 These are intentional limits until the read-only evidence layer is reliable.
 

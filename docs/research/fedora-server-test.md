@@ -37,7 +37,7 @@ pulling from Git, re-sync the repo first.
 On Fedora Server:
 
 ```sh
-sudo dnf install -y git cmake gcc-c++ pkgconf-pkg-config systemd-devel libcurl-devel
+sudo dnf install -y git cmake gcc-c++ pkgconf-pkg-config systemd-devel libcurl-devel rpm-build
 ```
 
 ## 2. Copy Or Clone The Repo
@@ -492,3 +492,33 @@ After testing, record:
 - Whether `service.diagnose` returned aggregate and underlying evidence.
 - Whether journal access required `systemd-journal` group membership.
 - Any failed commands and exact JSON responses.
+
+## 16. RPM Package Smoke
+
+Build a local RPM:
+
+```sh
+cmake -S . -B build-fedora -DCMAKE_BUILD_TYPE=Release
+cmake --build build-fedora
+cpack -G RPM --config build-fedora/CPackConfig.cmake
+rpm -qpl build-fedora/kasli-os-0.1.0-1.*.rpm
+```
+
+Expected package contents:
+
+```text
+/usr/bin/kasli
+/usr/bin/kaslid
+/usr/lib/systemd/user/kaslid.service
+```
+
+On a clean Fedora VM, install and test:
+
+```sh
+sudo dnf install ./kasli-os-0.1.0-1.*.rpm
+systemctl --user start kaslid
+kasli --tools-list
+kasli --call-tool system.info
+systemctl --user stop kaslid
+sudo dnf remove kasli-os
+```
