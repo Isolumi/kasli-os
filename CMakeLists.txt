@@ -25,7 +25,10 @@ add_library(kasli_core
   src/core/uuid.cpp
   src/ipc/line_protocol.cpp
   src/ipc/unix_socket.cpp
+  src/model/model_config.cpp
+  src/model/model_prompt.cpp
   src/model/ollama_provider.cpp
+  src/model/openai_compatible_provider.cpp
   src/policy/policy_broker.cpp
   src/session/session_service.cpp
   src/tools/disk_tool.cpp
@@ -181,6 +184,14 @@ catch_discover_tests(kasli_model_context_test TEST_PREFIX "model.")
 add_executable(kasli_ollama_provider_test tests/unit/ollama_provider_test.cpp)
 target_link_libraries(kasli_ollama_provider_test PRIVATE kasli_core Catch2::Catch2WithMain)
 catch_discover_tests(kasli_ollama_provider_test TEST_PREFIX "model.")
+
+add_executable(kasli_openai_compatible_provider_test tests/unit/openai_compatible_provider_test.cpp)
+target_link_libraries(kasli_openai_compatible_provider_test PRIVATE kasli_core Catch2::Catch2WithMain)
+catch_discover_tests(kasli_openai_compatible_provider_test TEST_PREFIX "model.")
+
+add_executable(kasli_model_config_test tests/unit/model_config_test.cpp)
+target_link_libraries(kasli_model_config_test PRIVATE kasli_core Catch2::Catch2WithMain)
+catch_discover_tests(kasli_model_config_test TEST_PREFIX "model.")
 
 add_executable(kasli_line_protocol_test tests/unit/line_protocol_test.cpp)
 target_link_libraries(kasli_line_protocol_test PRIVATE kasli_core Catch2::Catch2WithMain)

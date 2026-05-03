@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <kasli/model/model_prompt.hpp>
 #include <kasli/model/ollama_provider.hpp>
 
 #include <stdexcept>
@@ -41,6 +42,16 @@ TEST_CASE("ollama prompt marks missing evidence") {
   });
 
   REQUIRE(prompt.find("<no_evidence />") != std::string::npos);
+}
+
+TEST_CASE("ollama prompt test helper wraps shared evidence prompt") {
+  const auto request = kasli::model::ModelRequest{
+      .prompt = "What changed?",
+      .evidence = {},
+  };
+
+  REQUIRE(kasli::model::build_ollama_prompt_for_test(request) ==
+          kasli::model::build_evidence_prompt(request));
 }
 
 TEST_CASE("ollama response parser returns response field") {
