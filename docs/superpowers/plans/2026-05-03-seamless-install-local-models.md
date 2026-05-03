@@ -22,7 +22,7 @@
 - Modify: `src/kasli-cli/main.cpp`
 - Modify: `CMakeLists.txt`
 
-- [ ] **Step 1: Add failing default-path and auto-start tests**
+- [x] **Step 1: Add failing default-path and auto-start tests**
 
 Add tests showing:
 
@@ -43,7 +43,7 @@ Create `tests/unit/daemon_autostart_test.cpp` with tests for:
 - start failure reports `systemctl --user status kaslid`
 - non-missing connection errors are returned without starting the service
 
-- [ ] **Step 2: Run tests to verify red**
+- [x] **Step 2: Run tests to verify red**
 
 Run:
 
@@ -55,7 +55,7 @@ cmake --build build-fedora --target kasli_default_paths_test kasli_daemon_autost
 Expected: build fails because the injected runtime-dir overload and daemon
 auto-start helper do not exist yet.
 
-- [ ] **Step 3: Implement runtime-dir fallback**
+- [x] **Step 3: Implement runtime-dir fallback**
 
 Extend `default_socket_path_from_env` so it checks:
 
@@ -66,7 +66,7 @@ Extend `default_socket_path_from_env` so it checks:
 The production lookup should return `/run/user/<geteuid()>` on Linux only when
 that directory exists.
 
-- [ ] **Step 4: Implement daemon auto-start helper**
+- [x] **Step 4: Implement daemon auto-start helper**
 
 Add a helper with injectable dependencies:
 
@@ -88,12 +88,12 @@ std::string request_with_optional_user_service_start(
 The default implementation should run `systemctl --user start kaslid`, wait up
 to roughly two seconds for the socket, and retry once.
 
-- [ ] **Step 5: Wire CLI explicit/default socket behavior**
+- [x] **Step 5: Wire CLI explicit/default socket behavior**
 
 Capture the `--socket` option pointer before `CLI11_PARSE`. After parsing,
 allow auto-start only when `socket_option->count() == 0`.
 
-- [ ] **Step 6: Verify green and commit**
+- [x] **Step 6: Verify green and commit**
 
 Run:
 

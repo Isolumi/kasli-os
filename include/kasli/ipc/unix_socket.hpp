@@ -3,11 +3,24 @@
 #include <cstddef>
 #include <filesystem>
 #include <functional>
+#include <stdexcept>
 #include <string>
 
 namespace kasli::ipc {
 
 inline constexpr std::size_t kMaxUnixSocketLineBytes = 1024 * 1024;
+
+class UnixSocketConnectError final : public std::runtime_error {
+ public:
+  explicit UnixSocketConnectError(int error_number);
+
+  int error_number() const noexcept {
+    return error_number_;
+  }
+
+ private:
+  int error_number_;
+};
 
 class UnixSocketServer {
  public:

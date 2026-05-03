@@ -28,8 +28,24 @@ TEST_CASE("default socket path uses XDG runtime directory") {
   REQUIRE(path == std::filesystem::path("/run/user/1000/kaslid.sock"));
 }
 
+TEST_CASE("default socket path falls back to Linux user runtime directory") {
+  const auto path = kasli::app::detail::default_socket_path_from_env(
+      env_lookup({}), [] { return std::optional<std::filesystem::path>("/run/user/1000"); });
+
+  REQUIRE(path == std::filesystem::path("/run/user/1000/kaslid.sock"));
+}
+
+TEST_CASE("empty XDG runtime directory falls back to Linux user runtime directory") {
+  const auto path = kasli::app::detail::default_socket_path_from_env(
+      env_lookup({{"XDG_RUNTIME_DIR", ""}}),
+      [] { return std::optional<std::filesystem::path>("/run/user/1000"); });
+
+  REQUIRE(path == std::filesystem::path("/run/user/1000/kaslid.sock"));
+}
+
 TEST_CASE("default socket path falls back to development socket") {
-  const auto path = kasli::app::detail::default_socket_path_from_env(env_lookup({}));
+  const auto path = kasli::app::detail::default_socket_path_from_env(
+      env_lookup({}), [] { return std::optional<std::filesystem::path>(); });
 
   REQUIRE(path == std::filesystem::path("kaslid.sock"));
 }

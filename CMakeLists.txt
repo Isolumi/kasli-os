@@ -17,6 +17,7 @@ include(CTest)
 include(Catch)
 
 add_library(kasli_core
+  src/app/daemon_autostart.cpp
   src/app/default_paths.cpp
   src/audit/audit_log.cpp
   src/core/json.cpp
@@ -86,6 +87,10 @@ catch_discover_tests(kasli_core_types_test TEST_PREFIX "core_types.")
 add_executable(kasli_default_paths_test tests/unit/default_paths_test.cpp)
 target_link_libraries(kasli_default_paths_test PRIVATE kasli_core Catch2::Catch2WithMain)
 catch_discover_tests(kasli_default_paths_test TEST_PREFIX "app.")
+
+add_executable(kasli_daemon_autostart_test tests/unit/daemon_autostart_test.cpp)
+target_link_libraries(kasli_daemon_autostart_test PRIVATE kasli_core Catch2::Catch2WithMain)
+catch_discover_tests(kasli_daemon_autostart_test TEST_PREFIX "app.")
 
 add_executable(kasli_audit_log_test tests/unit/audit_log_test.cpp)
 target_link_libraries(kasli_audit_log_test PRIVATE kasli_core Catch2::Catch2WithMain)

@@ -11,8 +11,11 @@ namespace kasli::app {
 namespace detail {
 
 using EnvLookup = std::function<std::optional<std::string>(std::string_view)>;
+using RuntimeDirLookup = std::function<std::optional<std::filesystem::path>()>;
 
 std::filesystem::path default_socket_path_from_env(const EnvLookup& env);
+std::filesystem::path default_socket_path_from_env(const EnvLookup& env,
+                                                   const RuntimeDirLookup& runtime_dir);
 std::filesystem::path default_audit_log_path_from_env(const EnvLookup& env);
 
 }  // namespace detail

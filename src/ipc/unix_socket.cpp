@@ -224,6 +224,10 @@ void reject_active_socket_or_remove_stale(const std::filesystem::path& socket_pa
 
 }  // namespace
 
+UnixSocketConnectError::UnixSocketConnectError(int error_number)
+    : std::runtime_error(std::string("connect failed: ") + std::strerror(error_number)),
+      error_number_(error_number) {}
+
 UnixSocketServer::UnixSocketServer(std::filesystem::path socket_path)
     : socket_path_(std::move(socket_path)) {
   if (socket_path_.has_parent_path()) {
@@ -301,7 +305,7 @@ std::string request_over_unix_socket(const std::filesystem::path& socket_path,
 
   const sockaddr_un address = make_address(socket_path);
   if (::connect(fd.get(), reinterpret_cast<const sockaddr*>(&address), sizeof(address)) != 0) {
-    throw syscall_error("connect");
+    throw UnixSocketConnectError(errno);
   }
 
   write_line(fd.get(), request);

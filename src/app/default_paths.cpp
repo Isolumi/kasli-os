@@ -2,6 +2,11 @@
 
 #include <cstdlib>
 #include <string>
+#include <system_error>
+
+#if defined(__linux__)
+#include <unistd.h>
+#endif
 
 namespace kasli::app {
 namespace {
@@ -15,13 +20,33 @@ std::optional<std::string> getenv_value(std::string_view key) {
   return std::string(value);
 }
 
+std::optional<std::filesystem::path> linux_user_runtime_dir() {
+#if defined(__linux__)
+  const auto path = std::filesystem::path("/run/user") / std::to_string(::geteuid());
+  std::error_code error;
+  if (std::filesystem::is_directory(path, error)) {
+    return path;
+  }
+#endif
+  return std::nullopt;
+}
+
 }  // namespace
 
 namespace detail {
 
 std::filesystem::path default_socket_path_from_env(const EnvLookup& env) {
-  if (const auto runtime_dir = env("XDG_RUNTIME_DIR")) {
-    return std::filesystem::path(*runtime_dir) / "kaslid.sock";
+  return default_socket_path_from_env(env, linux_user_runtime_dir);
+}
+
+std::filesystem::path default_socket_path_from_env(const EnvLookup& env,
+                                                   const RuntimeDirLookup& runtime_dir) {
+  if (const auto runtime_dir_env = env("XDG_RUNTIME_DIR");
+      runtime_dir_env && !runtime_dir_env->empty()) {
+    return std::filesystem::path(*runtime_dir_env) / "kaslid.sock";
+  }
+  if (const auto fallback_runtime_dir = runtime_dir()) {
+    return *fallback_runtime_dir / "kaslid.sock";
   }
   return "kaslid.sock";
 }
