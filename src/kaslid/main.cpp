@@ -4,7 +4,7 @@
 #include <kasli/core/uuid.hpp>
 #include <kasli/ipc/line_protocol.hpp>
 #include <kasli/ipc/unix_socket.hpp>
-#include <kasli/model/ollama_provider.hpp>
+#include <kasli/model/model_config.hpp>
 #include <kasli/policy/policy_broker.hpp>
 #include <kasli/session/session_service.hpp>
 #include <kasli/tools/disk_tool.hpp>
@@ -123,9 +123,18 @@ std::filesystem::path journal_fixture_path() {
   return KASLI_DEFAULT_JOURNAL_FIXTURE;
 }
 
+std::optional<std::string> model_env_value(std::string_view key) {
+  const std::string name(key);
+  if (const char* value = std::getenv(name.c_str())) {
+    return std::string(value);
+  }
+  return std::nullopt;
+}
+
 std::string handle_request(const std::string& input,
                            const kasli::session::SessionService& service,
-                           const kasli::audit::AuditLog& audit) {
+                           const kasli::audit::AuditLog& audit,
+                           const kasli::model::ModelProvider& model) {
   std::string id = "unknown";
   try {
     auto request = nlohmann::json::parse(input);
@@ -149,7 +158,6 @@ std::string handle_request(const std::string& input,
     if (method == "ask") {
       const std::string prompt = request.at("prompt").get<std::string>();
       auto tool_request = request.at("tool").get<kasli::core::ToolRequest>();
-      kasli::model::OllamaProvider model("http://127.0.0.1:11434", "llama3.2");
       const auto result = service.ask_with_tool(prompt, tool_request, model, "cli");
       return kasli::ipc::make_ask_response(id, result.ok, result.answer, result.error).dump();
     }
@@ -198,12 +206,14 @@ int main(int argc, char** argv) {
     kasli::policy::PolicyBroker policy(registry.policies());
     kasli::audit::AuditLog audit(options->audit_path);
     kasli::session::SessionService service(registry, policy, audit);
+    const auto model_config = kasli::model::model_config_from_env(model_env_value);
+    auto model = kasli::model::make_model_provider(model_config);
     kasli::ipc::UnixSocketServer server(options->socket_path);
 
     while (true) {
       try {
         server.accept_one([&](const std::string& request) {
-          return handle_request(request, service, audit);
+          return handle_request(request, service, audit, *model);
         });
         if (options->once) {
           break;

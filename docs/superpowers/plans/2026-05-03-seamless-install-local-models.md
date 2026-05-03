@@ -223,7 +223,7 @@ git commit -m "feat: add configurable local model providers"
 - Modify: `src/kaslid/main.cpp`
 - Modify: `tests/unit/model_config_test.cpp`
 
-- [ ] **Step 1: Add failing integration-facing config test**
+- [x] **Step 1: Add failing integration-facing config test**
 
 Add a test that `model_config_from_env` accepts:
 
@@ -236,7 +236,7 @@ KASLI_MODEL_NAME=kimi-k2
 and returns provider `ollama`, endpoint `http://127.0.0.1:11434`, model
 `kimi-k2`.
 
-- [ ] **Step 2: Run test to verify red or confirm existing coverage**
+- [x] **Step 2: Run test to verify red or confirm existing coverage**
 
 Run:
 
@@ -248,7 +248,7 @@ cmake --build build-fedora --target kasli_model_config_test
 Expected before implementation: if Task 2 did not cover this exact case, the
 new test fails.
 
-- [ ] **Step 3: Wire daemon to runtime model provider**
+- [x] **Step 3: Wire daemon to runtime model provider**
 
 In `src/kaslid/main.cpp`, create the model provider once in `main`:
 
@@ -260,7 +260,7 @@ auto model = kasli::model::make_model_provider(model_config);
 Pass `*model` into `handle_request` and remove the hardcoded
 `OllamaProvider("http://127.0.0.1:11434", "llama3.2")`.
 
-- [ ] **Step 4: Verify green and commit**
+- [x] **Step 4: Verify green and commit**
 
 Run:
 

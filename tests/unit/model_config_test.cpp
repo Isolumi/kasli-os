@@ -52,6 +52,19 @@ TEST_CASE("openai-compatible provider environment uses local defaults") {
   REQUIRE(kasli::model::model_provider_kind_to_string(config.provider) == "openai-compatible");
 }
 
+TEST_CASE("ollama environment accepts explicit daemon endpoint and model") {
+  const auto config = kasli::model::model_config_from_env(env_lookup({
+      {"KASLI_MODEL_PROVIDER", "ollama"},
+      {"KASLI_MODEL_ENDPOINT", "http://127.0.0.1:11434"},
+      {"KASLI_MODEL_NAME", "kimi-k2"},
+  }));
+
+  REQUIRE(config.provider == kasli::model::ModelProviderKind::Ollama);
+  REQUIRE(kasli::model::model_provider_kind_to_string(config.provider) == "ollama");
+  REQUIRE(config.endpoint == "http://127.0.0.1:11434");
+  REQUIRE(config.model == "kimi-k2");
+}
+
 TEST_CASE("endpoint and model name override ollama defaults") {
   const auto config = kasli::model::model_config_from_env(env_lookup({
       {"KASLI_MODEL_PROVIDER", "ollama"},
