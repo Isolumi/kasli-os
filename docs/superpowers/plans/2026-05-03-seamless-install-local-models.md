@@ -126,7 +126,7 @@ git commit -m "feat: auto-start user daemon from CLI"
 - Modify: `tests/unit/ollama_provider_test.cpp`
 - Modify: `CMakeLists.txt`
 
-- [ ] **Step 1: Add failing provider/config tests**
+- [x] **Step 1: Add failing provider/config tests**
 
 Add tests showing:
 
@@ -141,7 +141,7 @@ Add tests showing:
 - `KASLI_MODEL_ENDPOINT` and `KASLI_MODEL_NAME` override provider defaults.
 - unknown provider names throw a clear error.
 
-- [ ] **Step 2: Run tests to verify red**
+- [x] **Step 2: Run tests to verify red**
 
 Run:
 
@@ -152,7 +152,7 @@ cmake --build build-fedora --target kasli_openai_compatible_provider_test kasli_
 
 Expected: build fails because the provider and config files do not exist yet.
 
-- [ ] **Step 3: Extract shared model prompt**
+- [x] **Step 3: Extract shared model prompt**
 
 Move the current prompt construction from `src/model/ollama_provider.cpp` into
 `src/model/model_prompt.cpp` as:
@@ -164,7 +164,7 @@ std::string build_evidence_prompt(const ModelRequest& request);
 Keep `build_ollama_prompt_for_test` as a wrapper so existing tests keep their
 public API.
 
-- [ ] **Step 4: Implement OpenAI-compatible provider**
+- [x] **Step 4: Implement OpenAI-compatible provider**
 
 Implement non-streaming `POST /v1/chat/completions` with libcurl. The payload
 should use:
@@ -181,7 +181,7 @@ should use:
 
 The response parser should return `choices[0].message.content`.
 
-- [ ] **Step 5: Implement model config**
+- [x] **Step 5: Implement model config**
 
 Implement environment lookup helpers and:
 
@@ -199,7 +199,7 @@ std::unique_ptr<ModelProvider> make_model_provider(const ModelConfig& config);
 std::string model_provider_kind_to_string(ModelProviderKind provider);
 ```
 
-- [ ] **Step 6: Verify green and commit**
+- [x] **Step 6: Verify green and commit**
 
 Run:
 
@@ -286,7 +286,7 @@ git commit -m "feat: configure daemon model provider"
 - Modify: `CMakeLists.txt`
 - Modify: `docs/superpowers/plans/2026-05-03-seamless-install-local-models.md`
 
-- [ ] **Step 1: Update docs**
+- [x] **Step 1: Update docs**
 
 Document:
 
@@ -305,7 +305,7 @@ Document:
 - troubleshooting for missing socket, service failure, missing model server,
   and bad model name
 
-- [ ] **Step 2: Bump RPM version**
+- [x] **Step 2: Bump RPM version**
 
 Change `project(kasli_os VERSION 0.1.0 LANGUAGES CXX)` to:
 
@@ -313,7 +313,7 @@ Change `project(kasli_os VERSION 0.1.0 LANGUAGES CXX)` to:
 project(kasli_os VERSION 0.1.1 LANGUAGES CXX)
 ```
 
-- [ ] **Step 3: Run full verification**
+- [x] **Step 3: Run full verification**
 
 Run:
 
@@ -324,11 +324,11 @@ ctest --test-dir build-fedora --output-on-failure
 find build-fedora -maxdepth 1 -name '*.rpm' -delete
 cpack -G RPM --config build-fedora/CPackConfig.cmake
 rpm -qpl build-fedora/kasli-os-0.1.1-1.x86_64.rpm
-rpm -i --test build-fedora/kasli-os-0.1.1-1.x86_64.rpm
+rpm -U --test build-fedora/kasli-os-0.1.1-1.x86_64.rpm
 git diff --check
 ```
 
-- [ ] **Step 4: Request final review and commit**
+- [x] **Step 4: Request final review and commit**
 
 Request a code review over all changes. Address critical or important findings.
 Then commit:

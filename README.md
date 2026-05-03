@@ -18,7 +18,7 @@ This repository currently builds:
 - A typed read-only tool API.
 - A read-only policy broker backed by trusted tool metadata.
 - Append-only JSONL audit logging.
-- Optional Ollama-backed answering over curated tool evidence.
+- Optional Ollama or LM Studio-backed answering over curated tool evidence.
 
 Implemented tools:
 
@@ -116,10 +116,15 @@ Fetched automatically by CMake:
 
 Optional:
 
-- `libcurl`, for Ollama HTTP support.
+- `libcurl`, for local HTTP model provider support.
 - `pkg-config` and `libsystemd` development headers, for live systemd and
   journal integration on Linux.
-- Ollama with the `llama3.2` model, for local AI answering.
+- Ollama with `gemma4`, or LM Studio with a loaded local model, for local AI
+  answering.
+
+For a Fedora RPM that matches the documented install path, install the Fedora
+development packages shown below so the package includes local model HTTP
+providers and live systemd tool support.
 
 On macOS, the project builds and tests the daemon, CLI, policy, audit, socket,
 model-boundary, fixture-journal, and non-systemd behavior. Live systemd behavior
@@ -139,38 +144,51 @@ Expected result on the current prototype: all tests pass.
 
 ## Build The RPM
 
-On Fedora, install the RPM build dependency and build a local package:
+On Fedora, install the RPM build and native integration dependencies, then build
+a local package:
 
 ```sh
-sudo dnf install rpm-build
+sudo dnf install git cmake gcc-c++ pkgconf-pkg-config systemd-devel libcurl-devel rpm-build
 cmake -S . -B build-fedora -DCMAKE_BUILD_TYPE=Release
 cmake --build build-fedora
 cpack -G RPM --config build-fedora/CPackConfig.cmake
 ```
 
 The RPM is written under `build-fedora/`. Copy that RPM to a Fedora machine,
-then install and smoke test it with:
+then install or upgrade and smoke test it with:
 
 ```sh
-sudo dnf install ./kasli-os-0.1.0-1.*.rpm
-systemctl --user start kaslid
+sudo dnf install ./build-fedora/kasli-os-0.1.1-1.*.rpm
 kasli --tools-list
 kasli --call-tool system.info
 ```
 
-Stop and remove it with:
+The installed CLI starts `kaslid.service` on demand when the default user socket
+is missing. For manual daemon control:
 
 ```sh
+systemctl --user status kaslid
+systemctl --user start kaslid
 systemctl --user stop kaslid
+```
+
+Enable login autostart only if you want Kasli running in future user sessions:
+
+```sh
+systemctl --user enable --now kaslid
+systemctl --user disable --now kaslid
+```
+
+Remove the package with:
+
+```sh
 sudo dnf remove kasli-os
 ```
 
-Use `systemctl --user enable --now kaslid` instead of `start` if you want the
-daemon to start automatically in future user sessions.
-
-Installed defaults use `$XDG_RUNTIME_DIR/kaslid.sock` for the Unix socket and
-`$XDG_STATE_HOME/kasli/audit.jsonl`, or `$HOME/.local/state/kasli/audit.jsonl`,
-or `kasli-audit.jsonl` for the audit log.
+Installed defaults use `$XDG_RUNTIME_DIR/kaslid.sock`, then
+`/run/user/$UID/kaslid.sock`, then `kaslid.sock` for the Unix socket. Audit
+records use `$XDG_STATE_HOME/kasli/audit.jsonl`, then
+`$HOME/.local/state/kasli/audit.jsonl`, then `kasli-audit.jsonl`.
 
 ## Run The Daemon
 
@@ -224,22 +242,132 @@ sleep 1
 ./build/kasli --socket build/kaslid.sock --call-tool journal.query --param unit=ssh.service
 ```
 
-## Optional Ollama Use
+## Local Model Setup
 
-Start Ollama and make sure `llama3.2` is available:
+Kasli can answer questions from curated tool evidence with either Ollama or an
+OpenAI-compatible local server such as LM Studio. The model still never calls
+tools directly; `kaslid` runs the selected read-only tool first and sends only
+bounded evidence to the provider.
+
+### Ollama
+
+Install and start Ollama, then pull the default model:
 
 ```sh
-ollama pull llama3.2
+ollama pull gemma4
 ```
 
-With `kaslid` running:
+Other useful local model names depend on what your Ollama install supports.
+Gemma 3 variants usually use `gemma3`; Kimi variants may appear as `kimi-k2` or
+`kimi-k2-thinking` in Ollama model libraries. Set the exact model name with a
+systemd user drop-in:
+
+```sh
+systemctl --user edit kaslid
+```
+
+Example Ollama override:
+
+```ini
+[Service]
+Environment=KASLI_MODEL_PROVIDER=ollama
+Environment=KASLI_MODEL_ENDPOINT=http://127.0.0.1:11434
+Environment=KASLI_MODEL_NAME=gemma4
+```
+
+Apply changes:
+
+```sh
+systemctl --user daemon-reload
+systemctl --user restart kaslid
+```
+
+Then ask:
+
+```sh
+kasli --ask "What OS is this?" --ask-tool system.info
+```
+
+### LM Studio
+
+In LM Studio, load a local model and start the local server with OpenAI
+compatibility enabled. The default LM Studio server URL is:
+
+```text
+http://127.0.0.1:1234/v1
+```
+
+List model ids exposed by LM Studio:
+
+```sh
+curl http://127.0.0.1:1234/v1/models
+```
+
+Configure Kasli to use that server:
+
+```sh
+systemctl --user edit kaslid
+```
+
+Example LM Studio drop-in:
+
+```ini
+[Service]
+Environment=KASLI_MODEL_PROVIDER=openai-compatible
+Environment=KASLI_MODEL_ENDPOINT=http://127.0.0.1:1234/v1
+Environment=KASLI_MODEL_NAME=local-model
+```
+
+Replace `local-model` with the id from `/v1/models`, then apply:
+
+```sh
+systemctl --user daemon-reload
+systemctl --user restart kaslid
+```
+
+Ask with the installed CLI:
+
+```sh
+kasli --ask "What OS is this?" --ask-tool system.info
+```
+
+For development builds with a manually started daemon, keep using explicit
+socket paths:
 
 ```sh
 ./build/kasli --socket build/kaslid.sock --ask "What OS is this?" --ask-tool system.info
 ```
 
-If Ollama is not running or `llama3.2` is unavailable, the CLI returns a JSON
-error and the daemon audits `model.error`.
+If the model server is not running or the configured model name is unavailable,
+the CLI returns a JSON error and the daemon audits `model.error`.
+
+### Troubleshooting
+
+If `kasli` cannot connect to the daemon:
+
+```sh
+systemctl --user status kaslid
+systemctl --user restart kaslid
+kasli --tools-list
+```
+
+If your shell lacks `XDG_RUNTIME_DIR`, the CLI should fall back to
+`/run/user/$UID/kaslid.sock`. You can still inspect it with:
+
+```sh
+echo "$XDG_RUNTIME_DIR"
+ls -l /run/user/$(id -u)/kaslid.sock
+```
+
+If `--ask` returns a model error, verify the provider:
+
+```sh
+# Ollama
+ollama list
+
+# LM Studio
+curl http://127.0.0.1:1234/v1/models
+```
 
 ## Device Testing Matrix
 
@@ -247,7 +375,7 @@ Good first test device:
 
 - macOS laptop or desktop. This verifies build, tests, Unix socket hardening,
   CLI behavior, audit logs, fixture journal behavior, redaction, and optional
-  Ollama calls. It does not verify live systemd behavior.
+  Ollama or LM Studio calls. It does not verify live systemd behavior.
 
 Best next test device:
 
@@ -262,8 +390,9 @@ Later hardware test:
   user first; journal visibility depends on local permissions and group
   membership.
 
-For Linux systemd testing, install a compiler, CMake, `pkg-config`, and
-`libsystemd` development headers, then rebuild from scratch.
+For Linux systemd and local model testing, install a compiler, CMake,
+`pkg-config`, `libsystemd` development headers, and `libcurl` development
+headers, then rebuild from scratch.
 
 A fuller Fedora checklist, including a Codex handoff prompt for testing on the
 Fedora machine itself, is in
@@ -273,13 +402,13 @@ Examples:
 
 ```sh
 # Fedora
-sudo dnf install cmake gcc-c++ pkgconf-pkg-config systemd-devel rpm-build
+sudo dnf install cmake gcc-c++ pkgconf-pkg-config systemd-devel libcurl-devel rpm-build
 
 # Ubuntu/Debian
-sudo apt install cmake g++ pkg-config libsystemd-dev
+sudo apt install cmake g++ pkg-config libsystemd-dev libcurl4-openssl-dev
 
 # openSUSE
-sudo zypper install cmake gcc-c++ pkg-config systemd-devel
+sudo zypper install cmake gcc-c++ pkg-config systemd-devel libcurl-devel
 ```
 
 Then run:
@@ -320,7 +449,8 @@ If your distro uses `sshd.service` instead of `ssh.service`, use that unit name.
 - Live systemd paths require Linux with `libsystemd`; macOS only exercises
   unavailable-path behavior.
 - Journal access may be permission-limited depending on the user and distro.
-- The Ollama provider currently uses the local `llama3.2` model name.
+- Local model answering defaults to Ollama with `gemma4`; LM Studio works
+  through the OpenAI-compatible provider.
 
 ## Intended Direction
 

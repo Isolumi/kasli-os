@@ -22,8 +22,8 @@ The current prototype proves these pieces:
 - Tool calls are audited to append-only JSONL.
 - Evidence is bounded before it reaches the model path.
 - Likely secret strings are redacted in implemented evidence tools.
-- Optional Ollama integration can answer from selected evidence when a local
-  Ollama server is running.
+- Optional Ollama or LM Studio/OpenAI-compatible integration can answer from
+  selected evidence when a local model server is running.
 - A local Fedora RPM can be built with CPack and installed with DNF.
 
 ## Working Tools
@@ -248,10 +248,10 @@ Previous local macOS checkout before `services.failed`:
 The macOS checkout should be retested after pulling the `services.failed`
 commit.
 
-Fedora Linux 43 KDE checkout after RPM packaging:
+Fedora Linux 43 KDE checkout after seamless install and model setup:
 
 ```text
-134/134 tests passed
+158/158 tests passed
 ```
 
 Fresh daemon/CLI checks passed on Fedora Linux 43 for `system.info`,
@@ -269,9 +269,13 @@ Fedora RPM packaging now installs:
 ```
 
 Installed runtime defaults use `$XDG_RUNTIME_DIR/kaslid.sock` and
-`$XDG_STATE_HOME/kasli/audit.jsonl`, falling back to
-`$HOME/.local/state/kasli/audit.jsonl` and then `kasli-audit.jsonl` when those
-environment variables are unavailable.
+`/run/user/$UID/kaslid.sock`, then `kaslid.sock`, for the daemon socket.
+Audit defaults use `$XDG_STATE_HOME/kasli/audit.jsonl`, then
+`$HOME/.local/state/kasli/audit.jsonl`, then `kasli-audit.jsonl`.
+
+The installed `kasli` CLI starts `kaslid.service` on demand when the default
+socket is missing. Model provider settings are read at daemon startup from
+`KASLI_MODEL_PROVIDER`, `KASLI_MODEL_ENDPOINT`, and `KASLI_MODEL_NAME`.
 
 ## How To Verify Locally
 
@@ -286,22 +290,51 @@ ctest --test-dir build --output-on-failure
 Build the RPM:
 
 ```sh
-sudo dnf install rpm-build
+sudo dnf install git cmake gcc-c++ pkgconf-pkg-config systemd-devel libcurl-devel rpm-build
 cmake -S . -B build-fedora -DCMAKE_BUILD_TYPE=Release
 cmake --build build-fedora
 cpack -G RPM --config build-fedora/CPackConfig.cmake
-rpm -qpl build-fedora/kasli-os-0.1.0-1.*.rpm
+rpm -qpl build-fedora/kasli-os-0.1.1-1.*.rpm
 ```
 
 Install and smoke test on Fedora:
 
 ```sh
-sudo dnf install ./kasli-os-0.1.0-1.*.rpm
-systemctl --user start kaslid
+sudo dnf install ./build-fedora/kasli-os-0.1.1-1.*.rpm
 kasli --tools-list
 kasli --call-tool system.info
 systemctl --user stop kaslid
 sudo dnf remove kasli-os
+```
+
+Optional Ollama smoke:
+
+```sh
+ollama pull gemma4
+kasli --ask "What OS is this?" --ask-tool system.info
+```
+
+Optional LM Studio smoke:
+
+```sh
+curl http://127.0.0.1:1234/v1/models
+systemctl --user edit kaslid
+```
+
+Use a drop-in like this, replacing `local-model` with the id returned by
+`/v1/models`:
+
+```ini
+[Service]
+Environment=KASLI_MODEL_PROVIDER=openai-compatible
+Environment=KASLI_MODEL_ENDPOINT=http://127.0.0.1:1234/v1
+Environment=KASLI_MODEL_NAME=local-model
+```
+
+```sh
+systemctl --user daemon-reload
+systemctl --user restart kaslid
+kasli --ask "What OS is this?" --ask-tool system.info
 ```
 
 Start the daemon:

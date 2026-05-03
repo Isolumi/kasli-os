@@ -451,7 +451,7 @@ when it only stores the first 200 units.
 If Ollama is installed on the Fedora server:
 
 ```sh
-ollama pull llama3.2
+ollama pull gemma4
 ```
 
 With `kaslid` running:
@@ -470,6 +470,56 @@ Expected:
 
 If Ollama is unavailable, the CLI returns a JSON error and the audit log records
 `model.error`.
+
+To test a different Ollama model, create a user service drop-in:
+
+```sh
+systemctl --user edit kaslid
+```
+
+```ini
+[Service]
+Environment=KASLI_MODEL_PROVIDER=ollama
+Environment=KASLI_MODEL_ENDPOINT=http://127.0.0.1:11434
+Environment=KASLI_MODEL_NAME=kimi-k2
+```
+
+Then reload and restart:
+
+```sh
+systemctl --user daemon-reload
+systemctl --user restart kaslid
+```
+
+## 14.1 Optional LM Studio Test
+
+In LM Studio, load a local model and start the OpenAI-compatible local server.
+Confirm the model id:
+
+```sh
+curl http://127.0.0.1:1234/v1/models
+```
+
+Configure `kaslid`:
+
+```sh
+systemctl --user edit kaslid
+```
+
+```ini
+[Service]
+Environment=KASLI_MODEL_PROVIDER=openai-compatible
+Environment=KASLI_MODEL_ENDPOINT=http://127.0.0.1:1234/v1
+Environment=KASLI_MODEL_NAME=local-model
+```
+
+Replace `local-model` with the id returned by `/v1/models`, then run:
+
+```sh
+systemctl --user daemon-reload
+systemctl --user restart kaslid
+kasli --ask "What OS is this?" --ask-tool system.info
+```
 
 ## 15. Record Results
 
@@ -501,7 +551,7 @@ Build a local RPM:
 cmake -S . -B build-fedora -DCMAKE_BUILD_TYPE=Release
 cmake --build build-fedora
 cpack -G RPM --config build-fedora/CPackConfig.cmake
-rpm -qpl build-fedora/kasli-os-0.1.0-1.*.rpm
+rpm -qpl build-fedora/kasli-os-0.1.1-1.*.rpm
 ```
 
 Expected package contents:
@@ -512,11 +562,10 @@ Expected package contents:
 /usr/lib/systemd/user/kaslid.service
 ```
 
-On a clean Fedora VM, install and test:
+On a clean Fedora VM, or over an older local Kasli RPM, install and test:
 
 ```sh
-sudo dnf install ./kasli-os-0.1.0-1.*.rpm
-systemctl --user start kaslid
+sudo dnf install ./build-fedora/kasli-os-0.1.1-1.*.rpm
 kasli --tools-list
 kasli --call-tool system.info
 systemctl --user stop kaslid

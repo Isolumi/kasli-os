@@ -49,7 +49,8 @@ It is currently:
 - a read-only policy broker
 - an append-only JSONL audit logger
 - a bounded evidence collection layer
-- an optional local model interface through Ollama
+- optional local model interfaces through Ollama and OpenAI-compatible servers
+  such as LM Studio
 
 The prototype proves the first important boundary: the model can answer
 questions using curated system evidence without getting unrestricted system
@@ -99,7 +100,8 @@ kaslid daemon
   |     append-only JSONL event stream
   |
   +-- model provider
-        optional Ollama HTTP provider; receives curated evidence only
+        optional Ollama or OpenAI-compatible HTTP provider;
+        receives curated evidence only
 ```
 
 The daemon is the authority boundary. The CLI does not inspect the machine
@@ -332,7 +334,7 @@ kaslid
   +-- calls system.info through the same policy/tool/audit path
   +-- if the tool fails or is denied, skips the model
   +-- builds a compact evidence bundle
-  +-- sends prompt + evidence to Ollama
+  +-- sends prompt + evidence to the configured local model provider
   +-- audits model.request
   +-- audits model.response or model.error
   +-- returns the answer or error
@@ -437,8 +439,10 @@ The model provider is behind an interface.
 
 Current provider:
 
-- Ollama over local HTTP
-- default model name: `llama3.2`
+- Ollama over local HTTP at `http://127.0.0.1:11434`
+- OpenAI-compatible chat completions at `http://127.0.0.1:1234/v1`
+- default model provider: `ollama`
+- default model name: `gemma4`
 
 The model receives:
 
@@ -466,7 +470,7 @@ Important dependencies:
 - Catch2 for tests
 - nlohmann/json for JSON serialization
 - CLI11 for CLI parsing
-- libcurl for Ollama HTTP when available
+- libcurl for local HTTP model providers when available
 - libsystemd for live Linux systemd and journal support when available
 
 CMake fetches Catch2, nlohmann/json, and CLI11 through `FetchContent`.
@@ -475,12 +479,16 @@ CMake fetches Catch2, nlohmann/json, and CLI11 through `FetchContent`.
 project still builds, and systemd tools return controlled unavailable responses
 where appropriate.
 
+The Fedora RPM build path should install `libcurl-devel`,
+`pkgconf-pkg-config`, and `systemd-devel` before configuration so the shipped
+artifact includes local model HTTP providers and live systemd tool support.
+
 ## Packaging
 
 The first shipped-product artifact is a local Fedora RPM built with CPack:
 
 ```sh
-sudo dnf install rpm-build
+sudo dnf install git cmake gcc-c++ pkgconf-pkg-config systemd-devel libcurl-devel rpm-build
 cmake -S . -B build-fedora -DCMAKE_BUILD_TYPE=Release
 cmake --build build-fedora
 cpack -G RPM --config build-fedora/CPackConfig.cmake
@@ -494,21 +502,40 @@ The RPM installs:
 /usr/lib/systemd/user/kaslid.service
 ```
 
-It is intended for local DNF install on a new Fedora machine:
+It is intended for local DNF install or upgrade on a Fedora machine:
 
 ```sh
-sudo dnf install ./kasli-os-0.1.0-1.*.rpm
-systemctl --user start kaslid
+sudo dnf install ./build-fedora/kasli-os-0.1.1-1.*.rpm
 kasli --tools-list
 kasli --call-tool system.info
 ```
 
-Installed defaults use `$XDG_RUNTIME_DIR/kaslid.sock` for the daemon socket and
-`$XDG_STATE_HOME/kasli/audit.jsonl`, or `$HOME/.local/state/kasli/audit.jsonl`,
-or `kasli-audit.jsonl` for the audit log. This keeps the first package
-user-scoped rather than a privileged system service. Use
-`systemctl --user enable --now kaslid` instead of `start` when persistent user
-autostart is wanted.
+The installed CLI starts `kaslid.service` on demand when the default socket is
+missing. Installed defaults use `$XDG_RUNTIME_DIR/kaslid.sock`, then
+`/run/user/$UID/kaslid.sock`, then `kaslid.sock` for the daemon socket. Audit
+records use `$XDG_STATE_HOME/kasli/audit.jsonl`,
+`$HOME/.local/state/kasli/audit.jsonl`, then `kasli-audit.jsonl`. This keeps
+the first package user-scoped rather than a privileged system service. Use
+`systemctl --user enable --now kaslid` when persistent user autostart is wanted.
+
+Model provider configuration is read by `kaslid` at startup:
+
+```text
+KASLI_MODEL_PROVIDER=ollama
+KASLI_MODEL_ENDPOINT=http://127.0.0.1:11434
+KASLI_MODEL_NAME=gemma4
+```
+
+For LM Studio:
+
+```text
+KASLI_MODEL_PROVIDER=openai-compatible
+KASLI_MODEL_ENDPOINT=http://127.0.0.1:1234/v1
+KASLI_MODEL_NAME=local-model
+```
+
+Replace `local-model` with the exact id returned by
+`curl http://127.0.0.1:1234/v1/models`.
 
 ## Test Strategy
 
@@ -516,6 +543,7 @@ The current test suite covers:
 
 - core typed schema serialization
 - installed runtime default path selection
+- installed CLI user-service auto-start behavior
 - timestamp format
 - audit log append behavior and failure handling
 - policy allow/deny behavior
@@ -537,6 +565,9 @@ The current test suite covers:
 - session orchestration
 - model request/response/error/skipped auditing
 - Ollama prompt construction and response parsing
+- OpenAI-compatible chat-completions payload and response parsing
+- OpenAI-compatible provider transport behavior
+- model provider environment configuration
 - JSON protocol envelopes
 - Unix socket framing, permissions, stale socket handling, and size limits
 
@@ -551,7 +582,7 @@ ctest --test-dir build --output-on-failure
 Expected current result:
 
 ```text
-134/134 tests passed
+158/158 tests passed
 ```
 
 ## Supported Test Devices
