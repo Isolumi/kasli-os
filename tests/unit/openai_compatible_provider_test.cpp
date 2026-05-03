@@ -60,6 +60,58 @@ TEST_CASE("openai-compatible endpoint does not append chat completions path twic
           "http://127.0.0.1:1234/v1/chat/completions");
 }
 
+TEST_CASE("openai-compatible provider posts chat completions request and parses response") {
+  std::string posted_url;
+  std::string posted_payload;
+  kasli::model::OpenAICompatibleProvider provider(
+      "http://127.0.0.1:1234/v1",
+      "local-model",
+      [&](const std::string& url, const std::string& payload) {
+        posted_url = url;
+        posted_payload = payload;
+        return kasli::model::OpenAICompatibleHttpResponse{
+            .status_code = 200,
+            .body = R"({"choices":[{"message":{"content":"answer text"}}]})",
+        };
+      });
+
+  const auto answer = provider.complete(kasli::model::ModelRequest{
+      .prompt = "What OS is this?",
+      .evidence = {},
+  });
+
+  REQUIRE(answer == "answer text");
+  REQUIRE(posted_url == "http://127.0.0.1:1234/v1/chat/completions");
+  const auto payload = nlohmann::json::parse(posted_payload);
+  REQUIRE(payload.at("model") == "local-model");
+  REQUIRE(payload.at("stream") == false);
+  REQUIRE(payload.at("messages").at(0).at("role") == "user");
+  REQUIRE(payload.at("messages").at(0).at("content").get<std::string>().find("What OS is this?") !=
+          std::string::npos);
+}
+
+TEST_CASE("openai-compatible provider reports HTTP errors from transport") {
+  kasli::model::OpenAICompatibleProvider provider(
+      "http://127.0.0.1:1234/v1",
+      "local-model",
+      [](const std::string&, const std::string&) {
+        return kasli::model::OpenAICompatibleHttpResponse{
+            .status_code = 404,
+            .body = R"({"error":"missing model"})",
+        };
+      });
+
+  try {
+    (void)provider.complete(kasli::model::ModelRequest{
+        .prompt = "What OS is this?",
+        .evidence = {},
+    });
+    FAIL("expected provider to throw");
+  } catch (const std::runtime_error& error) {
+    REQUIRE(std::string(error.what()) == "openai-compatible request failed with HTTP 404");
+  }
+}
+
 #if !KASLI_HAS_CURL
 TEST_CASE("openai-compatible provider reports unavailable when built without curl") {
   kasli::model::OpenAICompatibleProvider provider("http://127.0.0.1:1234/v1", "local-model");

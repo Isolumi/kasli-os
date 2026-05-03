@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(KASLI_ENABLE_SYSTEMD "Build systemd and journal adapters when libsystemd is available" ON)
-option(KASLI_ENABLE_CURL "Build Ollama provider when libcurl is available" ON)
+option(KASLI_ENABLE_CURL "Build local HTTP model providers when libcurl is available" ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(KasliDependencies)
