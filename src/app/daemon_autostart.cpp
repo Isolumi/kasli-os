@@ -104,7 +104,7 @@ std::string request_with_optional_user_service_start(const std::filesystem::path
 std::string request_with_optional_user_service_start(const std::filesystem::path& socket_path,
                                                      const std::string& request,
                                                      bool allow_autostart) {
-#if defined(__linux__) && KASLI_HAS_SYSTEMD
+#if defined(__linux__)
   return request_with_optional_user_service_start(socket_path, request, allow_autostart,
                                                   default_daemon_autostart_deps());
 #else
