@@ -60,6 +60,34 @@ TEST_CASE("missing default socket starts the service and retries") {
   REQUIRE(start_count == 1);
 }
 
+TEST_CASE("stale default socket starts the service and retries") {
+  auto deps = default_test_deps();
+  int request_count = 0;
+  int start_count = 0;
+
+  deps.request = [&](const std::filesystem::path& socket_path, const std::string& request) {
+    REQUIRE(socket_path == std::filesystem::path("/run/user/1000/kaslid.sock"));
+    REQUIRE(request == "ping");
+    ++request_count;
+    if (request_count == 1) {
+      throw kasli::ipc::UnixSocketConnectError(ECONNREFUSED);
+    }
+    return std::string{"pong"};
+  };
+  deps.start_user_service = [&] {
+    ++start_count;
+    return 0;
+  };
+  deps.socket_exists = [](const std::filesystem::path&) { return true; };
+
+  const auto response = kasli::app::request_with_optional_user_service_start(
+      "/run/user/1000/kaslid.sock", "ping", true, deps);
+
+  REQUIRE(response == "pong");
+  REQUIRE(request_count == 2);
+  REQUIRE(start_count == 1);
+}
+
 TEST_CASE("explicit socket never starts the service") {
   auto deps = default_test_deps();
   int start_count = 0;
@@ -77,6 +105,26 @@ TEST_CASE("explicit socket never starts the service") {
                                                                    false, deps);
       },
       ENOENT);
+  REQUIRE(start_count == 0);
+}
+
+TEST_CASE("explicit stale socket never starts the service") {
+  auto deps = default_test_deps();
+  int start_count = 0;
+  deps.request = [](const std::filesystem::path&, const std::string&) -> std::string {
+    throw kasli::ipc::UnixSocketConnectError(ECONNREFUSED);
+  };
+  deps.start_user_service = [&] {
+    ++start_count;
+    return 0;
+  };
+
+  require_throws_connect_error(
+      [&] {
+        (void)kasli::app::request_with_optional_user_service_start("/tmp/kaslid.sock", "ping",
+                                                                   false, deps);
+      },
+      ECONNREFUSED);
   REQUIRE(start_count == 0);
 }
 

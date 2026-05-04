@@ -551,7 +551,7 @@ Build a local RPM:
 cmake -S . -B build-fedora -DCMAKE_BUILD_TYPE=Release
 cmake --build build-fedora
 cpack -G RPM --config build-fedora/CPackConfig.cmake
-rpm -qpl build-fedora/kasli-os-0.1.1-1.*.rpm
+rpm -qpl build-fedora/kasli-os-0.1.2-1.*.rpm
 ```
 
 Expected package contents:
@@ -565,7 +565,7 @@ Expected package contents:
 On a clean Fedora VM, or over an older local Kasli RPM, install and test:
 
 ```sh
-sudo dnf install ./build-fedora/kasli-os-0.1.1-1.*.rpm
+sudo dnf install ./build-fedora/kasli-os-0.1.2-1.*.rpm
 kasli --tools-list
 kasli --call-tool system.info
 systemctl --user stop kaslid

@@ -290,7 +290,7 @@ git commit -m "feat: configure daemon model provider"
 
 Document:
 
-- `sudo dnf install ./build-fedora/kasli-os-0.1.1-1.*.rpm`
+- `sudo dnf install ./build-fedora/kasli-os-0.1.2-1.*.rpm`
 - `kasli --tools-list` directly after install
 - CLI on-demand daemon startup
 - manual `systemctl --user start|stop|status kaslid`
@@ -310,7 +310,7 @@ Document:
 Change `project(kasli_os VERSION 0.1.0 LANGUAGES CXX)` to:
 
 ```cmake
-project(kasli_os VERSION 0.1.1 LANGUAGES CXX)
+project(kasli_os VERSION 0.1.2 LANGUAGES CXX)
 ```
 
 - [x] **Step 3: Run full verification**
@@ -323,8 +323,8 @@ cmake --build build-fedora
 ctest --test-dir build-fedora --output-on-failure
 find build-fedora -maxdepth 1 -name '*.rpm' -delete
 cpack -G RPM --config build-fedora/CPackConfig.cmake
-rpm -qpl build-fedora/kasli-os-0.1.1-1.x86_64.rpm
-rpm -U --test build-fedora/kasli-os-0.1.1-1.x86_64.rpm
+rpm -qpl build-fedora/kasli-os-0.1.2-1.x86_64.rpm
+rpm -U --test build-fedora/kasli-os-0.1.2-1.x86_64.rpm
 git diff --check
 ```
 

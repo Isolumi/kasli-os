@@ -158,7 +158,7 @@ The RPM is written under `build-fedora/`. Copy that RPM to a Fedora machine,
 then install or upgrade and smoke test it with:
 
 ```sh
-sudo dnf install ./build-fedora/kasli-os-0.1.1-1.*.rpm
+sudo dnf install ./build-fedora/kasli-os-0.1.2-1.*.rpm
 kasli --tools-list
 kasli --call-tool system.info
 ```

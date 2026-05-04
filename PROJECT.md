@@ -505,7 +505,7 @@ The RPM installs:
 It is intended for local DNF install or upgrade on a Fedora machine:
 
 ```sh
-sudo dnf install ./build-fedora/kasli-os-0.1.1-1.*.rpm
+sudo dnf install ./build-fedora/kasli-os-0.1.2-1.*.rpm
 kasli --tools-list
 kasli --call-tool system.info
 ```
@@ -582,7 +582,7 @@ ctest --test-dir build --output-on-failure
 Expected current result:
 
 ```text
-158/158 tests passed
+160/160 tests passed
 ```
 
 ## Supported Test Devices

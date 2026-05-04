@@ -16,8 +16,8 @@ namespace {
 constexpr auto kStartCommand = "systemctl --user start kaslid";
 constexpr auto kStatusCommand = "systemctl --user status kaslid";
 
-bool is_missing_socket_error(const kasli::ipc::UnixSocketConnectError& error) {
-  return error.error_number() == ENOENT;
+bool is_startable_default_socket_error(const kasli::ipc::UnixSocketConnectError& error) {
+  return error.error_number() == ENOENT || error.error_number() == ECONNREFUSED;
 }
 
 bool is_socket_not_ready_error(const kasli::ipc::UnixSocketConnectError& error) {
@@ -87,7 +87,7 @@ std::string request_with_optional_user_service_start(const std::filesystem::path
     return deps.request(socket_path, request);
   } catch (const kasli::ipc::UnixSocketConnectError& error) {
     const std::string first_error = error.what();
-    if (!allow_autostart || !is_missing_socket_error(error)) {
+    if (!allow_autostart || !is_startable_default_socket_error(error)) {
       throw;
     }
 

@@ -251,7 +251,7 @@ commit.
 Fedora Linux 43 KDE checkout after seamless install and model setup:
 
 ```text
-158/158 tests passed
+160/160 tests passed
 ```
 
 Fresh daemon/CLI checks passed on Fedora Linux 43 for `system.info`,
@@ -294,13 +294,13 @@ sudo dnf install git cmake gcc-c++ pkgconf-pkg-config systemd-devel libcurl-deve
 cmake -S . -B build-fedora -DCMAKE_BUILD_TYPE=Release
 cmake --build build-fedora
 cpack -G RPM --config build-fedora/CPackConfig.cmake
-rpm -qpl build-fedora/kasli-os-0.1.1-1.*.rpm
+rpm -qpl build-fedora/kasli-os-0.1.2-1.*.rpm
 ```
 
 Install and smoke test on Fedora:
 
 ```sh
-sudo dnf install ./build-fedora/kasli-os-0.1.1-1.*.rpm
+sudo dnf install ./build-fedora/kasli-os-0.1.2-1.*.rpm
 kasli --tools-list
 kasli --call-tool system.info
 systemctl --user stop kaslid
