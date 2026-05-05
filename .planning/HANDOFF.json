@@ -1,0 +1,88 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-05-05T03:25:34.974Z",
+  "phase": "0.1",
+  "phase_name": "release checkpoint",
+  "phase_dir": ".planning/phases/0.1-release-checkpoint",
+  "plan": 0,
+  "task": 0,
+  "total_tasks": 0,
+  "status": "paused",
+  "completed_tasks": [
+    {
+      "id": 1,
+      "name": "Read-only daemon and CLI prototype",
+      "status": "done",
+      "commit": "ea8c71c"
+    },
+    {
+      "id": 2,
+      "name": "Fedora RPM packaging and installed CLI autostart",
+      "status": "done",
+      "commit": "ea8c71c"
+    },
+    {
+      "id": 3,
+      "name": "Ollama and LM Studio/OpenAI-compatible model provider support",
+      "status": "done",
+      "commit": "ea8c71c"
+    },
+    {
+      "id": 4,
+      "name": "Live Fedora validation with official Ollama and gemma4",
+      "status": "done",
+      "commit": "local runtime verification"
+    }
+  ],
+  "remaining_tasks": [
+    {
+      "id": 1,
+      "name": "Design the next user-facing ergonomics slice: natural ask flow plus setup diagnostics",
+      "status": "not_started"
+    },
+    {
+      "id": 2,
+      "name": "Write an implementation plan for the approved ergonomics design",
+      "status": "not_started"
+    },
+    {
+      "id": 3,
+      "name": "Decide whether to tag the current checkpoint as v0.1.2 or create a separate milestone label named 0.1",
+      "status": "not_started"
+    }
+  ],
+  "blockers": [
+    {
+      "description": "Fedora's distro-packaged ollama-0.9.4-4.fc43 reports version 0.0.0 and cannot load gemma4.",
+      "type": "external",
+      "workaround": "Use the official Ollama Linux install from ollama.com. Verified official Ollama 0.23.0 works with kasli ask."
+    }
+  ],
+  "human_actions_pending": [
+    {
+      "action": "Choose the public release label and artifact policy.",
+      "context": "The code package version is 0.1.2, while the milestone can still be described as the 0.1 checkpoint. A release tag should probably be v0.1.2 unless CMakeLists.txt is changed.",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "Kasli remains a daemon and CLI prototype for 0.1, not a full Linux distribution.",
+      "rationale": "The current valuable product is a safe local OS evidence layer. A distro/remix should wait until daemon, policy, rollback, and packaging are mature.",
+      "phase": "0.1"
+    },
+    {
+      "decision": "Keep the model untrusted and feed it curated tool evidence only.",
+      "rationale": "This preserves the safety boundary: the daemon executes typed read-only tools, audits the request, and sends bounded evidence to the model.",
+      "phase": "0.1"
+    },
+    {
+      "decision": "Prioritize usability next: automatic tool selection and setup diagnostics before SQLite snapshots or mutating actions.",
+      "rationale": "The core tool path works, but the CLI still requires users to know tool names and model setup details.",
+      "phase": "next"
+    }
+  ],
+  "uncommitted_files": [],
+  "next_action": "Resume brainstorming the ergonomics slice. Start by choosing between: automatic tool selection for `kasli ask`, a `kasli doctor` setup diagnostic, or a combined narrow slice with both.",
+  "context_notes": "Current runtime: Fedora Linux 43 KDE, branch development. build-fedora ctest passed 160/160. Installed `kasli --tools-list` returned the full registry. Official Ollama 0.23.0 service is active. `kasli --ask \"what os is this?\" --ask-tool system.info` returned ok with Fedora Linux 43 evidence."
+}

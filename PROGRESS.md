@@ -1,6 +1,6 @@
 # Kasli Progress
 
-Last updated: 2026-04-30
+Last updated: 2026-05-04
 
 This file tracks what works in the current prototype and how to verify it.
 
@@ -11,6 +11,12 @@ Linux management layer.
 
 It is not a Linux distribution yet. It does not mutate the system. It does not
 run arbitrary shell commands.
+
+The repository is at a 0.1-style checkpoint. The package version in
+`CMakeLists.txt` is `0.1.2`, so a public release tag should probably be
+`v0.1.2` unless the version is changed before tagging. A human-readable release
+checkpoint is recorded in `docs/releases/0.1-checkpoint.md`, and resume context
+is recorded in `.planning/phases/0.1-release-checkpoint/.continue-here.md`.
 
 The current prototype proves these pieces:
 
@@ -260,6 +266,28 @@ Fresh daemon/CLI checks passed on Fedora Linux 43 for `system.info`,
 `packages.list`, `disk.usage`, `hardware.summary`, `network.summary`,
 `power.status`, `service.diagnose`, and audit log metadata.
 
+Release-checkpoint verification on Fedora Linux 43 KDE:
+
+```text
+ctest --test-dir build-fedora --output-on-failure
+100% tests passed, 0 tests failed out of 160
+```
+
+Installed runtime smoke checks:
+
+```text
+kasli --tools-list
+ok=true with the full read-only tool registry
+
+kasli --ask "what os is this?" --ask-tool system.info
+ok=true; answered Fedora Linux 43 from system.info evidence
+```
+
+Official Ollama `0.23.0` with `gemma4` was verified working. Fedora's
+distro-packaged `ollama-0.9.4-4.fc43` reported version `0.0.0` and failed to
+load `gemma4`, so release docs and diagnostics should steer users toward the
+official Ollama install when they want `gemma4`.
+
 Fedora RPM packaging now installs:
 
 ```text
@@ -393,7 +421,17 @@ These are intentional limits until the read-only evidence layer is reliable.
 
 ## Next Recommended Work
 
-Next architecture step:
+Next user-facing step:
+
+- design and implement a natural `kasli ask` flow that can select safe
+  read-only tools automatically for common questions
+- add a `kasli doctor` setup diagnostic for daemon status, socket reachability,
+  model provider configuration, model availability, and known bad Ollama builds
+  such as version `0.0.0`
+- improve common setup errors so users do not need to interpret raw JSON or
+  Ollama HTTP 500 failures
+
+Next architecture step after that:
 
 - add a small SQLite state store for snapshots and "what changed since
   yesterday?" support
