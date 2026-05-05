@@ -1,3 +1,4 @@
 .worktrees/
+.planning/
 build/
 build-*/
